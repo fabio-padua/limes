@@ -66,6 +66,17 @@ Agents mode authenticates with `DefaultAzureCredential` (managed identity / `az 
 
 Outputs four artifacts per run — `assessment-<partner>.json`, `.md`, a branded Word report (`.docx`), and a PowerPoint executive summary (`.pptx`). The `.docx`/`.pptx` are produced with the Open XML SDK, so no Office install is required (CI- and cloud-job-friendly). The **intake** argument accepts a local file path or a blob URL pointing at a single blob (`https://<account>.blob.core.windows.net/<container>/<blob>`). The **output** argument accepts a local directory or a container URL, optionally with a prefix (`https://<account>.blob.core.windows.net/<container>[/<prefix>]`), under which the report files are written. The same binary therefore runs locally or as a cloud job.
 
+### Web UI
+
+For a point-and-click demo, `Limes.Web` is a small ASP.NET Core app that runs the deterministic pipeline behind a browser UI — paste, upload, or load the bundled sample intake, see the Readiness Index, pillar scores, gaps, roadmap, skilling plan, and risk register, then download any of the four artifacts.
+
+```bash
+dotnet run --project src/Limes.Web
+# then open the printed URL (e.g. http://localhost:5xxx)
+```
+
+It calls the same `Limes.Core`/`Limes.Agents` engine, so it stays $0 model cost with no Azure required. Key endpoints: `POST /api/assess` (intake JSON → scored result) and `GET /api/assessments/{id}/download/{json|md|docx|pptx}`.
+
 ## Deploy to Azure (`azd`)
 
 Agents mode runs as a **Container Apps Job** (batch, scales to zero) against an Azure AI Foundry model deployment, reading intake from Blob Storage and writing reports back to Blob. One command provisions everything and deploys the orchestrator image:
@@ -104,9 +115,11 @@ src/
   Limes.Core/          # Domain models, deterministic scoring, intake, reporting
   Limes.Agents/        # Agent pipeline (MAF): Janus → … → Fama + Minerva grounding
   Limes.Orchestrator/  # CLI entrypoint (--mode deterministic|agents) + Blob I/O
+  Limes.Web/           # ASP.NET Core web UI + API (browser demo, deterministic mode)
 tests/
   Limes.Core.Tests/    # xUnit tests for the scoring engine
   Limes.Agents.Tests/  # xUnit tests for the deterministic pipeline
+  Limes.Web.Tests/     # xUnit integration tests for the web API endpoints
 samples/               # Example intake JSON
 knowledge/             # Reference-knowledge corpus that grounds the agents (Minerva)
 infra/                 # azd Bicep: Foundry, Container Apps Job, Storage, ACR, RBAC
@@ -119,7 +132,7 @@ docs/                  # Architecture & plan
 - **Phase 2 — Agents mode** 🚧 MAF + Foundry pipeline scaffolded (deterministic fallback);
   `azd` + Foundry infra ✅ (Container Apps Job, Blob intake/reports); branded `.docx`/`.pptx` exec deliverables ✅
 - **Phase 3 — Grounding & dashboard** — Microsoft Learn MCP / RAG, benchmarking
-- **Phase 4 — Partner packaging** — web intake UI, clone-and-rebrand
+- **Phase 4 — Partner packaging** — web intake UI ✅ (`Limes.Web`), clone-and-rebrand
 
 See [`docs/architecture-and-plan.md`](docs/architecture-and-plan.md) for the full design.
 

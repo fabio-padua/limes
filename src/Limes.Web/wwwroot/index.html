@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Limes — AI CoE Readiness Assessor</title>
+<style>
+  :root {
+    --accent: #4F7A28;
+    --accent-2: #7AB317;
+    --accent-soft: #EDF3E3;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --bg: #f7f8f4;
+    --card: #ffffff;
+    --crit: #b91c1c; --high: #d97706; --med: #ca8a04; --low: #4b8b3b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--bg); line-height: 1.5;
+  }
+  header {
+    background: var(--accent); color: #fff; padding: 18px 28px;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  header h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: .3px; }
+  header span { color: var(--accent-soft); font-size: 13px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  h2 { font-size: 16px; margin: 0 0 14px; color: var(--accent); }
+  h3 { font-size: 14px; margin: 18px 0 8px; }
+  textarea {
+    width: 100%; min-height: 200px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 12.5px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; resize: vertical;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  button, .btn {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none;
+  }
+  button:hover, .btn:hover { background: #436621; }
+  button.secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+  button.secondary:hover { background: var(--accent-soft); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  .err { color: var(--crit); font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
+  .hidden { display: none; }
+
+  .index-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .index-num { font-size: 52px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .index-num small { font-size: 20px; color: var(--muted); font-weight: 600; }
+  .badge {
+    display: inline-block; background: var(--accent-soft); color: var(--accent);
+    border-radius: 999px; padding: 5px 14px; font-weight: 700; font-size: 14px;
+  }
+  .partner-meta { font-size: 13px; color: var(--muted); }
+
+  .bar-row { display: grid; grid-template-columns: 200px 1fr 92px; gap: 12px; align-items: center; margin: 7px 0; }
+  .bar-track { background: var(--accent-soft); border-radius: 6px; height: 18px; overflow: hidden; }
+  .bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent-2)); height: 100%; border-radius: 6px; }
+  .bar-label { font-size: 13px; }
+  .bar-val { font-size: 12.5px; text-align: right; color: var(--muted); }
+  .gap-list { margin: 4px 0 0; padding-left: 18px; }
+  .gap-list li { font-size: 12.5px; color: #7a3b12; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .wave-title { font-weight: 700; margin: 14px 0 4px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; }
+  .sev-Critical { background: var(--crit); } .sev-High { background: var(--high); }
+  .sev-Medium { background: var(--med); } .sev-Low { background: var(--low); }
+  .prio { color: var(--muted); font-size: 11.5px; }
+  details { margin-top: 8px; } summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+  .trace { font-size: 12px; color: var(--muted); margin: 6px 0 0; padding-left: 18px; }
+  .spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid #fff; border-top-color: transparent;
+    border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Limes</h1>
+  <span>AI Center of Excellence Readiness Assessor — deterministic mode ($0 model cost)</span>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1 · Intake</h2>
+    <p class="muted">Paste a partner intake JSON, upload a file, or load the bundled sample, then run the assessment.</p>
+    <textarea id="intake" spellcheck="false" placeholder="Paste intake JSON here…"></textarea>
+    <div class="row">
+      <button id="assessBtn">Run assessment</button>
+      <button class="secondary" id="sampleBtn">Load sample</button>
+      <button class="secondary" id="uploadBtn">Upload file…</button>
+      <input type="file" id="fileInput" accept="application/json,.json" class="hidden" />
+      <span id="status" class="muted"></span>
+    </div>
+    <div id="error" class="err hidden"></div>
+  </section>
+
+  <div id="results" class="hidden">
+    <section class="card">
+      <h2>2 · Readiness Index</h2>
+      <div class="index-wrap">
+        <div class="index-num" id="indexNum">–<small> / 5.00</small></div>
+        <div>
+          <div class="badge" id="indexLevel">–</div>
+          <div class="partner-meta" id="partnerMeta"></div>
+        </div>
+      </div>
+      <div class="row" id="downloads"></div>
+    </section>
+
+    <section class="card">
+      <h2>Pillar scores</h2>
+      <div id="pillars"></div>
+    </section>
+
+    <section class="card" id="roadmapCard">
+      <h2>Remediation roadmap</h2>
+      <div id="roadmap"></div>
+    </section>
+
+    <section class="card" id="skillingCard">
+      <h2>Skilling plan</h2>
+      <div id="skilling"></div>
+    </section>
+
+    <section class="card" id="risksCard">
+      <h2>Risk register</h2>
+      <div id="risks"></div>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary>Pipeline trace &amp; provenance</summary>
+        <ul class="trace" id="trace"></ul>
+        <p class="muted" id="provenance"></p>
+      </details>
+    </section>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  let currentId = null;
+
+  $("sampleBtn").addEventListener("click", async () => {
+    try {
+      const res = await fetch("api/sample");
+      if (!res.ok) throw new Error("sample not available");
+      $("intake").value = JSON.stringify(await res.json(), null, 2);
+      setStatus("Sample loaded.");
+    } catch { showError("Could not load the bundled sample."); }
+  });
+
+  $("uploadBtn").addEventListener("click", () => $("fileInput").click());
+  $("fileInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { $("intake").value = reader.result; setStatus(`Loaded ${file.name}.`); };
+    reader.readAsText(file);
+  });
+
+  $("assessBtn").addEventListener("click", runAssessment);
+
+  async function runAssessment() {
+    const body = $("intake").value.trim();
+    if (!body) { showError("Provide intake JSON first (paste, upload, or load the sample)."); return; }
+    clearError();
+    const btn = $("assessBtn");
+    btn.disabled = true;
+    setStatus('<span class="spinner"></span> Running pipeline…');
+    try {
+      const res = await fetch("api/assess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(data.error || `Request failed (${res.status}).`); return; }
+      render(data);
+      setStatus("Assessment complete.");
+    } catch (err) {
+      showError("Network error: " + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function render(d) {
+    currentId = d.id;
+    $("indexNum").innerHTML = `${d.readinessIndex.toFixed(2)}<small> / 5.00</small>`;
+    $("indexLevel").textContent = d.overallLevel;
+    const p = d.partner;
+    $("partnerMeta").textContent = [p.name, p.industry, p.region].filter(Boolean).join(" · ");
+
+    $("downloads").innerHTML = ["json", "md", "docx", "pptx"].map((f) =>
+      `<a class="btn" href="api/assessments/${currentId}/download/${f}">Download .${f}</a>`).join("");
+
+    renderPillars(d.pillars);
+    renderRoadmap(d.roadmap);
+    renderSkilling(d.skilling);
+    renderRisks(d.risks);
+
+    $("trace").innerHTML = (d.trace || []).map((t) => `<li>${esc(t)}</li>`).join("");
+    $("provenance").textContent =
+      `Mode: ${d.mode} · Generated: ${new Date(d.generatedAtUtc).toISOString()}` +
+      (d.knowledgeSource ? ` · Grounding: ${d.knowledgeSource}` : "");
+
+    $("results").classList.remove("hidden");
+    $("results").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function renderPillars(pillars) {
+    $("pillars").innerHTML = pillars.map((p) => {
+      const pct = Math.max(0, Math.min(100, (p.score / 5) * 100));
+      const gaps = p.gaps && p.gaps.length
+        ? `<ul class="gap-list">${p.gaps.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : "";
+      return `<div class="bar-row">
+          <div class="bar-label">${esc(p.pillar)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+          <div class="bar-val">${p.score.toFixed(2)} · ${esc(p.level)}</div>
+        </div>${gaps ? `<div style="grid-column:1/-1">${gaps}</div>` : ""}`;
+    }).join("");
+  }
+
+  function renderRoadmap(items) {
+    if (!items || !items.length) { $("roadmap").innerHTML = empty("No roadmap actions were generated."); return; }
+    const waves = [...new Set(items.map((i) => i.wave))].sort((a, b) => a - b);
+    $("roadmap").innerHTML = waves.map((w) => {
+      const rows = items.filter((i) => i.wave === w).map((i) => `
+        <tr>
+          <td><strong>${esc(i.title)}</strong><br><span class="prio">${esc(i.priority)}</span></td>
+          <td>${esc(i.pillar)}</td>
+          <td>${esc(i.description)}${i.dependsOn && i.dependsOn.length
+            ? `<br><span class="muted">Depends on: ${i.dependsOn.map(esc).join(", ")}</span>` : ""}</td>
+        </tr>`).join("");
+      return `<div class="wave-title">Wave ${w}</div>
+        <table><thead><tr><th>Action</th><th>Pillar</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }).join("");
+  }
+
+  function renderSkilling(items) {
+    if (!items || !items.length) { $("skilling").innerHTML = empty("No skilling recommendations were generated."); return; }
+    const rows = items.map((s) => `
+      <tr>
+        <td>${esc(s.pillar)}</td>
+        <td>${esc(s.gap)}</td>
+        <td>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.learnPath)}</a>` : esc(s.learnPath)}</td>
+        <td>${esc(s.role || "—")}</td>
+      </tr>`).join("");
+    $("skilling").innerHTML =
+      `<table><thead><tr><th>Pillar</th><th>Gap</th><th>Microsoft Learn path</th><th>Role</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function renderRisks(items) {
+    if (!items || !items.length) { $("risks").innerHTML = empty("No risks were identified."); return; }
+    const rows = items.map((r) => `
+      <tr>
+        <td><span class="pill sev-${esc(r.severity)}">${esc(r.severity)}</span></td>
+        <td>${esc(r.pillar)}</td>
+        <td><strong>${esc(r.title)}</strong><br>${esc(r.description)}</td>
+        <td>${esc(r.mitigation)}</td>
+      </tr>`).join("");
+    $("risks").innerHTML =
+      `<table><thead><tr><th>Severity</th><th>Pillar</th><th>Risk</th><th>Mitigation</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  const empty = (msg) => `<p class="muted"><em>${esc(msg)}</em></p>`;
+  function setStatus(html) { $("status").innerHTML = html; }
+  function showError(msg) { const e = $("error"); e.textContent = msg; e.classList.remove("hidden"); setStatus(""); }
+  function clearError() { $("error").classList.add("hidden"); $("error").textContent = ""; }
+</script>
+</body>
+</html>
