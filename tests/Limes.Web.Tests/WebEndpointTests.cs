@@ -101,6 +101,7 @@ public sealed class WebEndpointTests : IClassFixture<WebApplicationFactory<Progr
     [InlineData("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")]
     [InlineData("json", "application/json")]
     [InlineData("md", "text/markdown")]
+    [InlineData("html", "text/html")]
     public async Task Download_AfterAssess_ReturnsArtifact(string format, string expectedContentType)
     {
         var client = _factory.CreateClient();
