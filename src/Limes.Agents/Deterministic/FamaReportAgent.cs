@@ -31,6 +31,7 @@ public sealed class FamaReportAgent : ILimesAgent
             Mode = context.Mode,
             PipelineTrace = context.Trace.ToList(),
             KnowledgeSource = context.KnowledgeSource,
+            GeneratedAtUtc = scoring.GeneratedAtUtc,
         };
 
         return Task.CompletedTask;

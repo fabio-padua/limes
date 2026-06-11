@@ -63,7 +63,7 @@ else
 
 var deliverable = await pipeline.RunAsync(intake, parsed.Mode);
 
-var slug = string.Concat(deliverable.Partner.Name.Where(char.IsLetterOrDigit)).ToLowerInvariant();
+var slug = string.Concat(deliverable.Assessment.Partner.Name.Where(char.IsLetterOrDigit)).ToLowerInvariant();
 if (string.IsNullOrEmpty(slug)) slug = "partner";
 
 var jsonPath = Path.Combine(parsed.OutputDir, $"assessment-{slug}.json");
@@ -72,7 +72,7 @@ var mdPath = Path.Combine(parsed.OutputDir, $"assessment-{slug}.md");
 await File.WriteAllTextAsync(jsonPath, JsonReportWriter.Write(deliverable));
 await File.WriteAllTextAsync(mdPath, MarkdownReportWriter.Write(deliverable));
 
-Console.WriteLine($"Limes assessment complete for '{deliverable.Partner.Name}' ({deliverable.Mode} mode).");
+Console.WriteLine($"Limes assessment complete for '{deliverable.Assessment.Partner.Name}' ({deliverable.Mode} mode).");
 Console.WriteLine($"  Readiness Index: {deliverable.Assessment.ReadinessIndex:0.00} / 5.00 ({deliverable.Assessment.OverallLevel})");
 Console.WriteLine($"  Roadmap actions: {deliverable.Roadmap?.Actions.Count ?? 0}");
 Console.WriteLine($"  Skilling recs:   {deliverable.SkillingPlan?.Recommendations.Count ?? 0}");

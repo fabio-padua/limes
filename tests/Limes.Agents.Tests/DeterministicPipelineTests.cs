@@ -198,6 +198,16 @@ public class DeterministicPipelineTests
     }
 
     [Fact]
+    public async Task Fama_DeliverableTimestampMatchesAssessment()
+    {
+        var deliverable = await LimesPipelineFactory.CreateDeterministic()
+            .RunAsync(LowMaturityIntake(), AssessmentMode.Deterministic);
+
+        // Header (Assessment) and footer/JSON (Deliverable) must render one consistent timestamp.
+        Assert.Equal(deliverable.Assessment.GeneratedAtUtc, deliverable.GeneratedAtUtc);
+    }
+
+    [Fact]
     public async Task Pipeline_ThrowsWhenFamaNeverRuns()
     {
         var pipeline = new LimesPipeline([new JanusIntakeAgent()]);
