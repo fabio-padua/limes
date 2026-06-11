@@ -171,7 +171,12 @@ public static class MarkdownReportWriter
         return uri.AbsoluteUri.Replace("(", "%28").Replace(")", "%29");
     }
 
-    /// <summary>Minimal HTML entity encoding for free text emitted into raw-HTML blocks.</summary>
+    /// <summary>
+    /// Minimal HTML-entity encoding (&amp;, &lt;, &gt;) applied to any potentially untrusted
+    /// text written into the Markdown report — partner header, gaps, roadmap text,
+    /// KnowledgeSource footer, table cells, and the pipeline trace — so attacker-controlled
+    /// content cannot inject raw HTML when the Markdown is rendered.
+    /// </summary>
     private static string Encode(string? value) =>
         (value ?? string.Empty)
             .Replace("&", "&amp;")
