@@ -21,7 +21,7 @@ param principalId string
 @description('Orchestrator container image. Empty uses a placeholder until azd deploys the real one.')
 param orchestratorImage string
 
-@description('Web (Limes.Web) container image. Empty uses a placeholder until azd deploys the real one.')
+@description('Web (Limes.Web) container image. When empty, a placeholder image is used; azd deploy later builds, pushes, and updates the Container App with the real image.')
 param webImage string
 
 // Built-in role definition IDs.
