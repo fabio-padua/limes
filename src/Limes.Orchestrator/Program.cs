@@ -1,3 +1,4 @@
+using Azure.Identity;
 using Limes.Agents;
 using Limes.Agents.Knowledge;
 using Limes.Agents.Maf;
@@ -5,12 +6,14 @@ using Limes.Agents.Pipeline;
 using Limes.Core.Domain;
 using Limes.Core.Intake;
 using Limes.Core.Reporting;
+using Limes.Orchestrator.Storage;
 
 // Limes orchestrator — Phase 2.
-// Usage: Limes.Orchestrator <intake.json> [outputDir] [--mode deterministic|agents] [--knowledge <path>]
+// Usage: Limes.Orchestrator <intake> [output] [--mode deterministic|agents] [--knowledge <path>]
 //
-// Runs the Janus → Iustitia → Providentia → Egeria → Terminus → Fama pipeline over a partner
-// intake and writes assessment-<partner>.json and assessment-<partner>.md.
+// <intake> and [output] may each be a local path OR an Azure Blob URL (https://...). When run as
+// a Container Apps Job they can also be supplied via LIMES_INTAKE / LIMES_OUTPUT, and the mode via
+// LIMES_MODE — so the job runs with no CLI args. Blob access uses DefaultAzureCredential.
 //
 //   deterministic (default) — pure rules engine, $0 model cost, no Azure required.
 //   agents                  — MAF + Foundry pipeline; requires LIMES_FOUNDRY_ENDPOINT and
@@ -20,24 +23,48 @@ var parsed = OrchestratorArgs.Parse(args);
 if (parsed is null)
     return 1;
 
-if (!File.Exists(parsed.IntakePath))
-{
-    Console.Error.WriteLine($"Intake file not found: {parsed.IntakePath}");
-    return 1;
-}
+// One credential for both Blob access and the Foundry agents (managed identity in Azure,
+// az login locally). Token acquisition is lazy, so this is free when neither path is used.
+var credential = new DefaultAzureCredential();
 
+AssessmentIntake intake;
 try
 {
-    Directory.CreateDirectory(parsed.OutputDir);
+    if (RemoteIo.IsAzureBlobUrl(parsed.IntakePath))
+    {
+        var json = await RemoteIo.ReadAllTextAsync(parsed.IntakePath, credential);
+        intake = IntakeLoader.FromJson(json);
+    }
+    else
+    {
+        if (!File.Exists(parsed.IntakePath))
+        {
+            Console.Error.WriteLine($"Intake file not found: {parsed.IntakePath}");
+            return 1;
+        }
+        intake = await IntakeLoader.FromFileAsync(parsed.IntakePath);
+    }
 }
-catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
-    or ArgumentException or NotSupportedException or PathTooLongException)
+catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
 {
-    Console.Error.WriteLine($"Could not create output directory '{parsed.OutputDir}': {ex.Message}");
+    Console.Error.WriteLine($"Could not load intake from '{parsed.IntakePath}': {ex.Message}");
     return 1;
 }
 
-var intake = await IntakeLoader.FromFileAsync(parsed.IntakePath);
+var outputIsBlob = RemoteIo.IsAzureBlobUrl(parsed.OutputDir);
+if (!outputIsBlob)
+{
+    try
+    {
+        Directory.CreateDirectory(parsed.OutputDir);
+    }
+    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+        or ArgumentException or NotSupportedException or PathTooLongException)
+    {
+        Console.Error.WriteLine($"Could not create output directory '{parsed.OutputDir}': {ex.Message}");
+        return 1;
+    }
+}
 
 LimesPipeline pipeline;
 if (parsed.Mode == AssessmentMode.Agents)
@@ -59,7 +86,7 @@ if (parsed.Mode == AssessmentMode.Agents)
             Console.Error.WriteLine($"Warning: knowledge file could not be loaded, continuing ungrounded: {parsed.KnowledgePath}");
     }
 
-    var factory = new FoundryAgentFactory(connection);
+    var factory = new FoundryAgentFactory(connection, credential);
     pipeline = LimesPipelineFactory.CreateAgents(factory, knowledge);
     Console.WriteLine($"Running in agents mode (Foundry: {connection.Endpoint}, deployment: {connection.Deployment}).");
 }
@@ -75,19 +102,33 @@ var deliverable = await pipeline.RunAsync(intake, parsed.Mode);
 var slug = string.Concat(deliverable.Assessment.Partner.Name.Where(char.IsLetterOrDigit)).ToLowerInvariant();
 if (string.IsNullOrEmpty(slug)) slug = "partner";
 
-var jsonPath = Path.Combine(parsed.OutputDir, $"assessment-{slug}.json");
-var mdPath = Path.Combine(parsed.OutputDir, $"assessment-{slug}.md");
+var jsonContent = JsonReportWriter.Write(deliverable);
+var mdContent = MarkdownReportWriter.Write(deliverable);
+var jsonName = $"assessment-{slug}.json";
+var mdName = $"assessment-{slug}.md";
 
-await File.WriteAllTextAsync(jsonPath, JsonReportWriter.Write(deliverable));
-await File.WriteAllTextAsync(mdPath, MarkdownReportWriter.Write(deliverable));
+string jsonLocation;
+string mdLocation;
+if (outputIsBlob)
+{
+    jsonLocation = (await RemoteIo.WriteAllTextAsync(parsed.OutputDir, jsonName, jsonContent, credential)).ToString();
+    mdLocation = (await RemoteIo.WriteAllTextAsync(parsed.OutputDir, mdName, mdContent, credential)).ToString();
+}
+else
+{
+    jsonLocation = Path.Combine(parsed.OutputDir, jsonName);
+    mdLocation = Path.Combine(parsed.OutputDir, mdName);
+    await File.WriteAllTextAsync(jsonLocation, jsonContent);
+    await File.WriteAllTextAsync(mdLocation, mdContent);
+}
 
 Console.WriteLine($"Limes assessment complete for '{deliverable.Assessment.Partner.Name}' ({deliverable.Mode} mode).");
 Console.WriteLine($"  Readiness Index: {deliverable.Assessment.ReadinessIndex:0.00} / 5.00 ({deliverable.Assessment.OverallLevel})");
 Console.WriteLine($"  Roadmap actions: {deliverable.Roadmap?.Actions.Count ?? 0}");
 Console.WriteLine($"  Skilling recs:   {deliverable.SkillingPlan?.Recommendations.Count ?? 0}");
 Console.WriteLine($"  Risks:           {deliverable.RiskRegister?.Risks.Count ?? 0}");
-Console.WriteLine($"  JSON: {jsonPath}");
-Console.WriteLine($"  Markdown: {mdPath}");
+Console.WriteLine($"  JSON: {jsonLocation}");
+Console.WriteLine($"  Markdown: {mdLocation}");
 
 return 0;
 
@@ -104,6 +145,7 @@ internal sealed record OrchestratorArgs
         string? intakePath = null;
         string? outputDir = null;
         var mode = AssessmentMode.Deterministic;
+        var modeSpecified = false;
         string? knowledgePath = null;
 
         for (var i = 0; i < args.Length; i++)
@@ -117,6 +159,7 @@ internal sealed record OrchestratorArgs
                         Console.Error.WriteLine("--mode requires a value: deterministic | agents");
                         return null;
                     }
+                    modeSpecified = true;
                     break;
                 case "--knowledge":
                     if (++i >= args.Length)
@@ -143,9 +186,24 @@ internal sealed record OrchestratorArgs
             }
         }
 
+        // Env fallbacks let the Container Apps Job run with no CLI args.
+        intakePath ??= NullIfBlank(Environment.GetEnvironmentVariable("LIMES_INTAKE"));
+        outputDir ??= NullIfBlank(Environment.GetEnvironmentVariable("LIMES_OUTPUT"));
+        knowledgePath ??= NullIfBlank(Environment.GetEnvironmentVariable("LIMES_KNOWLEDGE"));
+        if (!modeSpecified)
+        {
+            var envMode = Environment.GetEnvironmentVariable("LIMES_MODE");
+            if (!string.IsNullOrWhiteSpace(envMode) && TryParseMode(envMode, out var em))
+                mode = em;
+        }
+
         if (intakePath is null)
         {
-            Console.Error.WriteLine("Usage: Limes.Orchestrator <intake.json> [outputDir] [--mode deterministic|agents] [--knowledge <path>]");
+            Console.Error.WriteLine("Usage: Limes.Orchestrator <intake> [output] [--mode deterministic|agents] [--knowledge <path>]");
+            Console.Error.WriteLine("  <intake>  local file path, or a blob URL: https://<account>.blob.core.windows.net/<container>/<blob>");
+            Console.Error.WriteLine("  [output]  local directory, or a container URL (optionally with a prefix):");
+            Console.Error.WriteLine("            https://<account>.blob.core.windows.net/<container>[/<prefix>]");
+            Console.Error.WriteLine("  May also be supplied via LIMES_INTAKE / LIMES_OUTPUT / LIMES_MODE / LIMES_KNOWLEDGE.");
             return null;
         }
 
@@ -157,6 +215,8 @@ internal sealed record OrchestratorArgs
             KnowledgePath = knowledgePath,
         };
     }
+
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     private static bool TryParseMode(string value, out AssessmentMode mode)
     {

@@ -64,7 +64,37 @@ dotnet run --project src/Limes.Orchestrator -- samples/sample-intake.json out \
 
 Agents mode authenticates with `DefaultAzureCredential` (managed identity / `az login`) — no keys in source. The `--knowledge` corpus is prompt-injected (and content-hashed) to ground the agents.
 
-Outputs `assessment-<partner>.json` and `assessment-<partner>.md` into the chosen output directory.
+Outputs `assessment-<partner>.json` and `assessment-<partner>.md`. The **intake** argument accepts a local file path or a blob URL pointing at a single blob (`https://<account>.blob.core.windows.net/<container>/<blob>`). The **output** argument accepts a local directory or a container URL, optionally with a prefix (`https://<account>.blob.core.windows.net/<container>[/<prefix>]`), under which the report files are written. The same binary therefore runs locally or as a cloud job.
+
+## Deploy to Azure (`azd`)
+
+Agents mode runs as a **Container Apps Job** (batch, scales to zero) against an Azure AI Foundry model deployment, reading intake from Blob Storage and writing reports back to Blob. One command provisions everything and deploys the orchestrator image:
+
+```bash
+azd auth login
+azd up   # prompts for an environment name, region, and subscription
+```
+
+`azd up` provisions (see [`infra/`](infra/)): Azure AI Foundry (account + **`gpt-5.2`** deployment), a Container Apps environment + Job, Container Registry, Storage (with `intake`/`reports` containers), Log Analytics + Application Insights, and a user-assigned managed identity wired with least-privilege RBAC (`Cognitive Services OpenAI User`, `Storage Blob Data Contributor`, `AcrPull`). It also grants **your** principal data-plane access so you can run locally against the same Foundry endpoint. All auth is **Entra ID only** — local keys are disabled on both Foundry and Storage.
+
+Override the model without editing Bicep:
+
+```bash
+azd env set LIMES_CHAT_MODEL gpt-4o-mini          # if your subscription lacks gpt-5.2 quota
+azd env set LIMES_CHAT_MODEL_VERSION 2024-07-18
+azd env set LIMES_AI_LOCATION eastus2             # pin the model region
+```
+
+Run an assessment by starting the job (it reads `samples`-style intake from the `intake` container):
+
+```bash
+# Upload an intake, then start the job
+az storage blob upload --account-name <st-account> --auth-mode login \
+  -c intake -n sample-intake.json -f samples/sample-intake.json
+az containerapp job start -g <rg> -n <job-name>
+```
+
+The job name and storage account are emitted as `azd` outputs (`LIMES_JOB_NAME`, `AZURE_STORAGE_ACCOUNT`) and saved to `.azure/<env>/.env`.
 
 ## Repository layout
 
@@ -73,12 +103,13 @@ Limes.sln
 src/
   Limes.Core/          # Domain models, deterministic scoring, intake, reporting
   Limes.Agents/        # Agent pipeline (MAF): Janus → … → Fama + Minerva grounding
-  Limes.Orchestrator/  # CLI entrypoint (--mode deterministic|agents)
+  Limes.Orchestrator/  # CLI entrypoint (--mode deterministic|agents) + Blob I/O
 tests/
   Limes.Core.Tests/    # xUnit tests for the scoring engine
   Limes.Agents.Tests/  # xUnit tests for the deterministic pipeline
 samples/               # Example intake JSON
 knowledge/             # Reference-knowledge corpus that grounds the agents (Minerva)
+infra/                 # azd Bicep: Foundry, Container Apps Job, Storage, ACR, RBAC
 docs/                  # Architecture & plan
 ```
 
@@ -86,7 +117,7 @@ docs/                  # Architecture & plan
 
 - **Phase 1 — Deterministic MVP** ✅ scoring engine, JSON/Markdown reports, CI eval gate
 - **Phase 2 — Agents mode** 🚧 MAF + Foundry pipeline scaffolded (deterministic fallback);
-  next: `azd` + Foundry infra, `.docx`/`.pptx` deliverables
+  `azd` + Foundry infra ✅ (Container Apps Job, Blob intake/reports); next: `.docx`/`.pptx` deliverables
 - **Phase 3 — Grounding & dashboard** — Microsoft Learn MCP / RAG, benchmarking
 - **Phase 4 — Partner packaging** — web intake UI, clone-and-rebrand
 
