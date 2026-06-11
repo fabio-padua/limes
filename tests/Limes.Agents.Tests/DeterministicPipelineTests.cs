@@ -123,6 +123,33 @@ public class DeterministicPipelineTests
     }
 
     [Fact]
+    public async Task Providentia_WiresPrerequisiteAndBumpsWave_WhenPrerequisiteIsLaterWave()
+    {
+        // ModelManagement is lowest (base wave 1) but its prerequisite DataFoundations scores
+        // higher (wave 2). The dependency must still be wired and ModelManagement's effective
+        // wave bumped to be no earlier than DataFoundations. InfrastructureForAi is healthy, so
+        // it's out of scope and must NOT appear as a dependency.
+        var intake = IntakeWith(
+            Pillar(Domain.Pillar.DataFoundations, 3, 2),     // avg 2.5 → wave 2
+            Pillar(Domain.Pillar.InfrastructureForAi, 5, 5), // healthy → out of scope
+            Pillar(Domain.Pillar.ModelManagement, 1, 2));    // avg 1.5 → base wave 1
+
+        var deliverable = await LimesPipelineFactory.CreateDeterministic()
+            .RunAsync(intake, AssessmentMode.Deterministic);
+
+        var actions = deliverable.Roadmap!.Actions;
+        var model = actions.Single(a => a.Pillar == Domain.Pillar.ModelManagement);
+        var data = actions.Single(a => a.Pillar == Domain.Pillar.DataFoundations);
+        var infraId = ProvidentiaActionId(Domain.Pillar.InfrastructureForAi);
+
+        Assert.Contains(data.Id, model.DependsOn);
+        Assert.DoesNotContain(infraId, model.DependsOn);
+        Assert.True(model.Wave >= data.Wave);
+    }
+
+    private static string ProvidentiaActionId(Pillar pillar) => $"RA-{(int)pillar}";
+
+    [Fact]
     public async Task Providentia_SkipsHealthyPillars()
     {
         // Every pillar at 5/5 → no remediation actions.

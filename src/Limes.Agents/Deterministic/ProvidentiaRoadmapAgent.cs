@@ -28,13 +28,20 @@ public sealed class ProvidentiaRoadmapAgent : ILimesAgent
             .Where(p => p.Score < TargetScore)
             .ToDictionary(
                 p => p.Pillar,
-                p => (Wave: WaveFor(p.Score), Priority: PriorityFor(p.Score), Pillar: p));
+                p => (BaseWave: WaveFor(p.Score), Priority: PriorityFor(p.Score), Pillar: p));
+
+        // Effective wave = at least the max wave of every in-scope prerequisite, so a dependent
+        // action can never be scheduled before foundational work it explicitly depends on.
+        var effectiveWaves = new Dictionary<Pillar, int>();
+        foreach (var pillar in planned.Keys)
+            ResolveWave(pillar, planned, effectiveWaves);
 
         var actions = new List<RemediationAction>();
-        foreach (var (pillar, plan) in planned.OrderBy(kv => kv.Value.Wave).ThenBy(kv => (int)kv.Key))
+        foreach (var (pillar, plan) in planned.OrderBy(kv => effectiveWaves[kv.Key]).ThenBy(kv => (int)kv.Key))
         {
+            // Always wire prerequisites that are themselves in scope, regardless of their wave.
             var dependsOn = AssessmentReference.Prerequisites(pillar)
-                .Where(pre => planned.TryGetValue(pre, out var preq) && preq.Wave <= plan.Wave && pre != pillar)
+                .Where(pre => pre != pillar && planned.ContainsKey(pre))
                 .Select(ActionId)
                 .ToList();
 
@@ -44,7 +51,7 @@ public sealed class ProvidentiaRoadmapAgent : ILimesAgent
                 Pillar = pillar,
                 Title = $"Raise {pillar.DisplayName()} maturity ({plan.Pillar.Level.DisplayName()} → target)",
                 Description = Describe(plan.Pillar),
-                Wave = plan.Wave,
+                Wave = effectiveWaves[pillar],
                 Priority = plan.Priority,
                 DependsOn = dependsOn,
                 Citations = AssessmentReference.Citations(pillar),
@@ -60,6 +67,32 @@ public sealed class ProvidentiaRoadmapAgent : ILimesAgent
     }
 
     private static int WaveFor(double score) => score < 2.0 ? 1 : score < 3.0 ? 2 : 3;
+
+    /// <summary>
+    /// Resolves a pillar's effective wave to the max of its own base wave and the effective waves
+    /// of every in-scope prerequisite. Memoized; the seed-before-recurse pattern guards against
+    /// cycles (the prerequisite graph is a DAG, but this stays safe if that ever changes).
+    /// </summary>
+    private static int ResolveWave(
+        Pillar pillar,
+        IReadOnlyDictionary<Pillar, (int BaseWave, ActionPriority Priority, PillarScore Pillar)> planned,
+        Dictionary<Pillar, int> resolved)
+    {
+        if (resolved.TryGetValue(pillar, out var cached))
+            return cached;
+
+        var wave = planned[pillar].BaseWave;
+        resolved[pillar] = wave;
+
+        foreach (var pre in AssessmentReference.Prerequisites(pillar))
+        {
+            if (pre != pillar && planned.ContainsKey(pre))
+                wave = Math.Max(wave, ResolveWave(pre, planned, resolved));
+        }
+
+        resolved[pillar] = wave;
+        return wave;
+    }
 
     private static ActionPriority PriorityFor(double score) =>
         score < 2.0 ? ActionPriority.QuickWin : ActionPriority.Strategic;

@@ -30,15 +30,6 @@ Directory.CreateDirectory(parsed.OutputDir);
 
 var intake = await IntakeLoader.FromFileAsync(parsed.IntakePath);
 
-// Optional Minerva grounding corpus (used only in agents mode).
-MinervaKnowledgeSource? knowledge = null;
-if (!string.IsNullOrWhiteSpace(parsed.KnowledgePath))
-{
-    knowledge = MinervaKnowledgeSource.TryLoadFile(parsed.KnowledgePath);
-    if (knowledge is null)
-        Console.Error.WriteLine($"Warning: knowledge file not found, continuing ungrounded: {parsed.KnowledgePath}");
-}
-
 LimesPipeline pipeline;
 if (parsed.Mode == AssessmentMode.Agents)
 {
@@ -50,12 +41,23 @@ if (parsed.Mode == AssessmentMode.Agents)
         return 2;
     }
 
+    // Optional Minerva grounding corpus — only loaded in agents mode, where it's actually used.
+    MinervaKnowledgeSource? knowledge = null;
+    if (!string.IsNullOrWhiteSpace(parsed.KnowledgePath))
+    {
+        knowledge = MinervaKnowledgeSource.TryLoadFile(parsed.KnowledgePath);
+        if (knowledge is null)
+            Console.Error.WriteLine($"Warning: knowledge file not found, continuing ungrounded: {parsed.KnowledgePath}");
+    }
+
     var factory = new FoundryAgentFactory(connection);
     pipeline = LimesPipelineFactory.CreateAgents(factory, knowledge);
     Console.WriteLine($"Running in agents mode (Foundry: {connection.Endpoint}, deployment: {connection.Deployment}).");
 }
 else
 {
+    if (!string.IsNullOrWhiteSpace(parsed.KnowledgePath))
+        Console.Error.WriteLine("Note: --knowledge is ignored in deterministic mode (grounding applies only to --mode agents).");
     pipeline = LimesPipelineFactory.CreateDeterministic();
 }
 

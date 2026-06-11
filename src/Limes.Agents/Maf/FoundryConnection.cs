@@ -37,6 +37,12 @@ public sealed record FoundryConnection
             return null;
         }
 
+        if (!uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            reason = $"{EndpointEnvVar} must use HTTPS: '{endpoint}'.";
+            return null;
+        }
+
         if (string.IsNullOrWhiteSpace(deployment))
         {
             reason = $"{DeploymentEnvVar} is not set.";
