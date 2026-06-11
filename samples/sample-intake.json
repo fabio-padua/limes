@@ -1,0 +1,59 @@
+{
+  "partner": {
+    "name": "Contoso Cloud Solutions",
+    "region": "Brazil",
+    "industry": "Financial Services"
+  },
+  "pillars": [
+    {
+      "pillar": "BusinessStrategy",
+      "responses": [
+        { "questionId": "BS1", "prompt": "AI initiatives are tied to measurable business value.", "score": 4 },
+        { "questionId": "BS2", "prompt": "Executive sponsorship and funding are in place.", "score": 3 },
+        { "questionId": "BS3", "prompt": "Use cases are prioritized against strategic goals.", "score": 2, "evidence": "Backlog exists but unprioritized." }
+      ]
+    },
+    {
+      "pillar": "AiStrategyAndExperience",
+      "responses": [
+        { "questionId": "AS1", "prompt": "A documented AI adoption roadmap exists.", "score": 3 },
+        { "questionId": "AS2", "prompt": "The AI lifecycle is governed end to end.", "score": 2 }
+      ]
+    },
+    {
+      "pillar": "OrganizationAndCulture",
+      "responses": [
+        { "questionId": "OC1", "prompt": "AI roles and responsibilities are defined.", "score": 2 },
+        { "questionId": "OC2", "prompt": "A structured AI skilling plan is in place.", "score": 1, "evidence": "No formal skilling program." }
+      ]
+    },
+    {
+      "pillar": "DataFoundations",
+      "responses": [
+        { "questionId": "DF1", "prompt": "Data governance and quality controls exist.", "score": 3 },
+        { "questionId": "DF2", "prompt": "Data security, privacy, and compliance are managed.", "score": 4 }
+      ]
+    },
+    {
+      "pillar": "InfrastructureForAi",
+      "responses": [
+        { "questionId": "IN1", "prompt": "Scalable AI platform architecture (AI Foundry / WAF) is adopted.", "score": 3 },
+        { "questionId": "IN2", "prompt": "Infrastructure is provisioned as code.", "score": 4 }
+      ]
+    },
+    {
+      "pillar": "ModelManagement",
+      "responses": [
+        { "questionId": "MM1", "prompt": "Model lifecycle and deployment are standardized (MLOps/LLMOps).", "score": 2 },
+        { "questionId": "MM2", "prompt": "Models are monitored in production.", "score": 2 }
+      ]
+    },
+    {
+      "pillar": "GovernanceAndSecurity",
+      "responses": [
+        { "questionId": "GS1", "prompt": "Responsible AI practices are documented and applied.", "score": 3 },
+        { "questionId": "GS2", "prompt": "AI risk management and controls are in place.", "score": 2 }
+      ]
+    }
+  ]
+}
