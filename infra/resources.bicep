@@ -209,11 +209,10 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
   location: location
   // azd matches this tag to build/push the image and update the app on deploy.
   tags: union(tags, { 'azd-service-name': 'web' })
+  // Dedicated system-assigned identity with ONLY AcrPull (granted below) — the public web
+  // app must not inherit the orchestrator identity's OpenAI/Blob data-plane roles.
   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${uami.id}': {}
-    }
+    type: 'SystemAssigned'
   }
   properties: {
     managedEnvironmentId: caeEnv.id
@@ -221,13 +220,17 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
       activeRevisionsMode: 'Single'
       ingress: {
         external: true
-        targetPort: 8080
+        // Port 80 matches both the placeholder image and the real image (which sets
+        // ASPNETCORE_HTTP_PORTS=80), so the first revision is healthy on initial provision.
+        targetPort: 80
         transport: 'auto'
       }
       registries: [
         {
           server: acr.properties.loginServer
-          identity: uami.id
+          // 'system' tells Container Apps to authenticate ACR pulls with the
+          // system-assigned identity (see the AcrPull assignment below).
+          identity: 'system'
         }
       ]
     }
@@ -252,6 +255,19 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
         maxReplicas: 3
       }
     }
+  }
+}
+
+// The web app's system-assigned identity needs AcrPull to fetch its image from the private
+// registry. The first-provision placeholder is a public MCR image (no ACR auth), so this can
+// be assigned after the app exists without a chicken-and-egg on initial provision.
+resource webAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(acr.id, webApp.id, acrPullRoleId)
+  scope: acr
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+    principalId: webApp.identity.principalId
+    principalType: 'ServicePrincipal'
   }
 }
 

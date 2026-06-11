@@ -18,7 +18,8 @@ RUN dotnet publish src/Limes.Web/Limes.Web.csproj -c Release -o /app --no-restor
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
-# The aspnet image listens on 8080 by default (ASPNETCORE_HTTP_PORTS=8080).
-EXPOSE 8080
+# Listen on 80 so the real image and the first-provision placeholder share the ingress port.
+ENV ASPNETCORE_HTTP_PORTS=80
+EXPOSE 80
 COPY --from=build /app ./
 ENTRYPOINT ["dotnet", "Limes.Web.dll"]
