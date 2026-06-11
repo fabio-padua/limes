@@ -117,7 +117,8 @@ public static class MarkdownReportWriter
 
         sb.AppendLine("---");
         sb.AppendLine();
-        sb.AppendLine($"_Mode: {deliverable.Mode} · Generated: {deliverable.GeneratedAtUtc.ToString("u", c)}_");
+        // Reuse the assessment's timestamp so the header and footer never disagree.
+        sb.AppendLine($"_Mode: {deliverable.Mode} · Generated: {deliverable.Assessment.GeneratedAtUtc.ToString("u", c)}_");
         if (!string.IsNullOrWhiteSpace(deliverable.KnowledgeSource))
             sb.AppendLine($"_Grounding corpus: {Encode(deliverable.KnowledgeSource)}_");
         if (deliverable.PipelineTrace.Count > 0)

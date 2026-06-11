@@ -7,7 +7,9 @@ namespace Limes.Agents.Tests;
 /// variables, so their env-var state can't race with other tests.
 /// </summary>
 [CollectionDefinition("Environment variables", DisableParallelization = true)]
-public sealed class EnvironmentVariableCollection;
+public sealed class EnvironmentVariableCollection
+{
+}
 
 [Collection("Environment variables")]
 public class FoundryConnectionTests
