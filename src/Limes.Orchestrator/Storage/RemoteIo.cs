@@ -65,10 +65,15 @@ internal static class RemoteIo
     /// </summary>
     private static (Uri ContainerUri, string Prefix) SplitContainerAndPrefix(Uri uri)
     {
-        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        // AbsolutePath segments are percent-encoded; decode them so GetBlobClient (which encodes
+        // the blob name itself) doesn't double-encode characters such as spaces in the prefix.
+        var segments = uri.AbsolutePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.UnescapeDataString)
+            .ToArray();
         var container = segments.Length > 0 ? segments[0] : string.Empty;
         var prefix = string.Join('/', segments.Skip(1));
-        var containerUri = new UriBuilder(uri) { Path = "/" + container, Query = string.Empty }.Uri;
+        var containerUri = new UriBuilder(uri) { Path = "/" + Uri.EscapeDataString(container), Query = string.Empty }.Uri;
         return (containerUri, prefix);
     }
 }
