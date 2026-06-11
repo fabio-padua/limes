@@ -137,6 +137,10 @@ public class ExecDeliverableWriterTests
         using var docxMs = new MemoryStream(docx);
         using var word = WordprocessingDocument.Open(docxMs, false);
         AssertValid(word);
+        // Even with no pillar scores, the Word report must still carry real content.
+        var docxText = word.MainDocumentPart!.Document.Body!.InnerText;
+        Assert.Contains("Fabrikam", docxText);
+        Assert.Contains("No pillar scores were available", docxText);
 
         using var pptxMs = new MemoryStream(pptx);
         using var pres = PresentationDocument.Open(pptxMs, false);

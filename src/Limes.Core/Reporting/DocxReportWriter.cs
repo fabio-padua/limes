@@ -57,18 +57,25 @@ public static class DocxReportWriter
 
             // --- Gaps ---
             body.AppendChild(Heading("Identified gaps", level: 2));
-            var pillarsWithGaps = assessment.PillarScores.Where(p => p.Gaps.Count > 0).ToList();
-            if (pillarsWithGaps.Count == 0)
+            if (assessment.PillarScores.Count == 0)
             {
-                body.AppendChild(Body_("No gaps flagged below the threshold.", italic: true));
+                body.AppendChild(Body_("No pillar scores were available, so no gaps could be assessed.", italic: true));
             }
             else
             {
-                foreach (var p in pillarsWithGaps)
+                var pillarsWithGaps = assessment.PillarScores.Where(p => p.Gaps.Count > 0).ToList();
+                if (pillarsWithGaps.Count == 0)
                 {
-                    body.AppendChild(Heading(p.Pillar.DisplayName(), level: 3));
-                    foreach (var gap in p.Gaps)
-                        body.AppendChild(Bullet(gap));
+                    body.AppendChild(Body_("No gaps flagged below the threshold.", italic: true));
+                }
+                else
+                {
+                    foreach (var p in pillarsWithGaps)
+                    {
+                        body.AppendChild(Heading(p.Pillar.DisplayName(), level: 3));
+                        foreach (var gap in p.Gaps)
+                            body.AppendChild(Bullet(gap));
+                    }
                 }
             }
 
