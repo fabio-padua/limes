@@ -94,8 +94,11 @@ public static class MarkdownReportWriter
             sb.AppendLine("| --- | --- | --- | --- |");
             foreach (var r in skilling.Recommendations)
             {
-                var path = string.IsNullOrWhiteSpace(r.Url) ? r.LearnPath : $"[{r.LearnPath}]({r.Url})";
-                sb.AppendLine($"| {r.Pillar.DisplayName()} | {r.Gap} | {path} | {r.Role ?? "—"} |");
+                var pathText = Cell(r.LearnPath);
+                var path = string.IsNullOrWhiteSpace(r.Url)
+                    ? pathText
+                    : $"[{pathText}]({SanitizeUrl(r.Url)})";
+                sb.AppendLine($"| {Cell(r.Pillar.DisplayName())} | {Cell(r.Gap)} | {path} | {Cell(r.Role)} |");
             }
             sb.AppendLine();
         }
@@ -108,7 +111,7 @@ public static class MarkdownReportWriter
             sb.AppendLine("| --- | --- | --- | --- |");
             foreach (var r in risks.Risks.OrderByDescending(r => r.Severity))
             {
-                sb.AppendLine($"| {r.Severity} | {r.Pillar.DisplayName()} | {r.Title} | {r.Mitigation} |");
+                sb.AppendLine($"| {Cell(r.Severity.ToString())} | {Cell(r.Pillar.DisplayName())} | {Cell(r.Title)} | {Cell(r.Mitigation)} |");
             }
             sb.AppendLine();
         }
@@ -123,12 +126,39 @@ public static class MarkdownReportWriter
             sb.AppendLine();
             sb.AppendLine("<details><summary>Pipeline trace</summary>");
             sb.AppendLine();
+            // The trace can carry LLM-produced text; HTML-encode and wrap in <pre> so it renders
+            // literally and can't inject markup (e.g. </details><script>) in HTML contexts.
+            sb.AppendLine("<pre>");
             foreach (var line in deliverable.PipelineTrace)
-                sb.AppendLine($"- {line}");
+                sb.AppendLine(Encode(line));
+            sb.AppendLine("</pre>");
             sb.AppendLine();
             sb.AppendLine("</details>");
         }
 
         return sb.ToString();
     }
+
+    /// <summary>Escapes a value for safe inclusion in a Markdown table cell (pipes and newlines).</summary>
+    private static string Cell(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "—";
+        return value
+            .Replace("|", "\\|")
+            .Replace("\r", " ")
+            .Replace("\n", " ")
+            .Trim();
+    }
+
+    /// <summary>Neutralizes characters that would break a Markdown link target inside a table cell.</summary>
+    private static string SanitizeUrl(string url) =>
+        url.Replace(" ", "%20").Replace("|", "%7C").Replace("(", "%28").Replace(")", "%29").Trim();
+
+    /// <summary>Minimal HTML entity encoding for free text emitted into raw-HTML blocks.</summary>
+    private static string Encode(string? value) =>
+        (value ?? string.Empty)
+            .Replace("&", "&amp;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;");
 }

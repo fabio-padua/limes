@@ -11,7 +11,11 @@ namespace Limes.Agents.Deterministic;
 /// </summary>
 public sealed class EgeriaSkillingAgent : ILimesAgent
 {
-    /// <summary>Pillars at or above this score do not generate a skilling recommendation.</summary>
+    /// <summary>
+    /// Skilling score threshold. A pillar generates a recommendation when it scores below this
+    /// value <em>or</em> has any flagged gaps — so an above-threshold pillar with residual gaps is
+    /// still covered (see <c>needsSkilling</c> in <see cref="RunAsync"/>).
+    /// </summary>
     public const double SkillThreshold = 3.0;
 
     public string Codename => "Egeria";
