@@ -31,8 +31,9 @@ var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull
 
 var placeholderImage = 'mcr.microsoft.com/k8se/quickstart-jobs:latest'
 var jobImage = empty(orchestratorImage) ? placeholderImage : orchestratorImage
-// Web placeholder listens on 80; the real Limes.Web image listens on 8080. The first-provision
-// revision is unhealthy until azd deploys the real image, which is the expected azd flow.
+// Both the placeholder (MCR quickstart) and the real Limes.Web image listen on 80
+// (the Dockerfile sets ASPNETCORE_HTTP_PORTS=80), matching ingress targetPort: 80, so the
+// first-provision revision is healthy before azd deploys the real image.
 var webPlaceholderImage = 'mcr.microsoft.com/k8se/quickstart:latest'
 var webImageResolved = empty(webImage) ? webPlaceholderImage : webImage
 
