@@ -28,18 +28,18 @@ var cacheTtl = TimeSpan.FromHours(1);
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 // Serve the bundled sample intake (embedded resource) so the UI's "Load sample" works everywhere.
-app.MapGet("/api/sample", () =>
+app.MapGet("/api/sample", async () =>
 {
-    using var stream = typeof(Program).Assembly.GetManifestResourceStream("Limes.Web.sample-intake.json");
+    await using var stream = typeof(Program).Assembly.GetManifestResourceStream("Limes.Web.sample-intake.json");
     if (stream is null)
         return Results.NotFound(new { error = "Sample intake is not bundled." });
     using var reader = new StreamReader(stream, Encoding.UTF8);
-    return Results.Text(reader.ReadToEnd(), "application/json", Encoding.UTF8);
+    return Results.Text(await reader.ReadToEndAsync(), "application/json", Encoding.UTF8);
 });
 
 // Run the deterministic pipeline over a posted intake ($0 model cost, no Azure) and cache the
 // deliverable so the report artifacts can be downloaded by id.
-app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, CancellationToken ct) =>
+app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, ILogger<Program> logger, CancellationToken ct) =>
 {
     string body;
     using (var reader = new StreamReader(request.Body, Encoding.UTF8))
@@ -66,7 +66,12 @@ app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, Cance
     }
     catch (Exception ex) when (ex is not OperationCanceledException)
     {
-        return Results.BadRequest(new { error = $"Assessment failed: {ex.Message}" });
+        // The intake parsed but the pipeline failed — that's a server-side fault. Log the detail
+        // server-side and return a stable, non-sensitive payload so we don't leak internals.
+        logger.LogError(ex, "Assessment pipeline failed.");
+        return Results.Json(
+            new { error = "The assessment could not be completed due to an internal error." },
+            statusCode: StatusCodes.Status500InternalServerError);
     }
 
     var id = Guid.NewGuid().ToString("N");
