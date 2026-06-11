@@ -2,6 +2,14 @@ using Limes.Agents.Maf;
 
 namespace Limes.Agents.Tests;
 
+/// <summary>
+/// Collection that disables parallelization for tests which mutate process-wide environment
+/// variables, so their env-var state can't race with other tests.
+/// </summary>
+[CollectionDefinition("Environment variables", DisableParallelization = true)]
+public sealed class EnvironmentVariableCollection;
+
+[Collection("Environment variables")]
 public class FoundryConnectionTests
 {
     [Theory]
