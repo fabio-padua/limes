@@ -84,6 +84,18 @@ public sealed class WebEndpointTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
 
+    [Fact]
+    public async Task Assess_WithOversizedBody_ReturnsPayloadTooLarge()
+    {
+        var client = _factory.CreateClient();
+        // Exceed the 1 MB cap with padded JSON; the guard should reject before parsing.
+        var huge = "{\"partner\":{\"name\":\"" + new string('a', 1_100_000) + "\"}}";
+        var res = await client.PostAsync("/api/assess",
+            new StringContent(huge, Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, res.StatusCode);
+    }
+
     [Theory]
     [InlineData("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")]
     [InlineData("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")]
