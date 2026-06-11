@@ -75,7 +75,7 @@ public static class DocxReportWriter
             // --- Roadmap ---
             if (deliverable.Roadmap is { Actions.Count: > 0 } roadmap)
             {
-                body.AppendChild(Heading("Remediation roadmap (Providentia)", level: 2));
+                body.AppendChild(Heading("Remediation roadmap", level: 2));
                 foreach (var wave in roadmap.Actions.GroupBy(a => a.Wave).OrderBy(g => g.Key))
                 {
                     body.AppendChild(Heading($"Wave {wave.Key.ToString(c)}", level: 3));
@@ -94,7 +94,7 @@ public static class DocxReportWriter
             // --- Skilling ---
             if (deliverable.SkillingPlan is { Recommendations.Count: > 0 } skilling)
             {
-                body.AppendChild(Heading("Skilling plan (Egeria)", level: 2));
+                body.AppendChild(Heading("Skilling plan", level: 2));
                 var rows = new List<string[]> { new[] { "Pillar", "Gap", "Microsoft Learn path", "Role" } };
                 rows.AddRange(skilling.Recommendations.Select(r => new[]
                 {
@@ -109,7 +109,7 @@ public static class DocxReportWriter
             // --- Risks ---
             if (deliverable.RiskRegister is { Risks.Count: > 0 } risks)
             {
-                body.AppendChild(Heading("Risk register (Terminus)", level: 2));
+                body.AppendChild(Heading("Risk register", level: 2));
                 var rows = new List<string[]> { new[] { "Severity", "Pillar", "Risk", "Mitigation" } };
                 rows.AddRange(risks.Risks.OrderByDescending(r => r.Severity).Select(r => new[]
                 {

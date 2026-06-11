@@ -127,6 +127,8 @@ public static class PptxReportWriter
                 $"{p.Pillar.DisplayName()} — {p.Score.ToString("0.00", c)} ({p.Level.DisplayName()})",
                 0, false, 18, Ink, false))
             .ToList();
+        if (lines.Count == 0)
+            lines.Add(new("No pillar scores were generated.", 0, false, 18, Ink, false));
         return ContentSlide("Pillar scores", lines);
     }
 

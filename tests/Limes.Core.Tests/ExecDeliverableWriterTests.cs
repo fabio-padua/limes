@@ -145,6 +145,7 @@ public class ExecDeliverableWriterTests
         var allText = string.Concat(pres.PresentationPart!.SlideParts.Select(s => s.Slide.InnerText));
         Assert.Contains("No roadmap actions", allText);
         Assert.Contains("No risks were identified", allText);
+        Assert.Contains("No pillar scores were generated", allText);
     }
 
     private static void AssertValid(OpenXmlPackage package)
