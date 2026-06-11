@@ -30,7 +30,7 @@ var credential = new DefaultAzureCredential();
 AssessmentIntake intake;
 try
 {
-    if (RemoteIo.IsHttpUrl(parsed.IntakePath))
+    if (RemoteIo.IsAzureBlobUrl(parsed.IntakePath))
     {
         var json = await RemoteIo.ReadAllTextAsync(parsed.IntakePath, credential);
         intake = IntakeLoader.FromJson(json);
@@ -51,7 +51,7 @@ catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowE
     return 1;
 }
 
-var outputIsBlob = RemoteIo.IsHttpUrl(parsed.OutputDir);
+var outputIsBlob = RemoteIo.IsAzureBlobUrl(parsed.OutputDir);
 if (!outputIsBlob)
 {
     try

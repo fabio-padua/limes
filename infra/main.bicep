@@ -21,8 +21,8 @@ param chatModelVersion string = '2025-12-11'
 @description('Model deployment SKU (GlobalStandard for the GPT-5 family).')
 param chatModelSkuName string = 'GlobalStandard'
 
-@description('Model deployment capacity in thousands of tokens per minute.')
-param chatModelCapacity int = 50
+@description('Model deployment capacity in thousands of tokens per minute. String so it can be overridden via an azd env var; converted to int before use.')
+param chatModelCapacity string = '50'
 
 @description('Object ID of the user/service principal granted data-plane access for local runs. azd sets AZURE_PRINCIPAL_ID. Leave empty to skip.')
 param principalId string = ''
@@ -50,7 +50,7 @@ module resources 'resources.bicep' = {
     chatModelName: chatModelName
     chatModelVersion: chatModelVersion
     chatModelSkuName: chatModelSkuName
-    chatModelCapacity: chatModelCapacity
+    chatModelCapacity: int(chatModelCapacity)
     principalId: principalId
     orchestratorImage: orchestratorImage
   }

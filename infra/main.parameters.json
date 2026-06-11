@@ -23,6 +23,9 @@
     "chatModelSkuName": {
       "value": "${LIMES_CHAT_MODEL_SKU=GlobalStandard}"
     },
+    "chatModelCapacity": {
+      "value": "${LIMES_CHAT_MODEL_CAPACITY=50}"
+    },
     "orchestratorImage": {
       "value": "${SERVICE_ORCHESTRATOR_IMAGE_NAME}"
     }

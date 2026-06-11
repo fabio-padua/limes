@@ -11,10 +11,25 @@ namespace Limes.Orchestrator.Storage;
 /// </summary>
 internal static class RemoteIo
 {
-    /// <summary>True when <paramref name="value"/> is an absolute http/https URL (i.e. a blob target).</summary>
-    public static bool IsHttpUrl(string? value) =>
+    // Azure Storage blob host suffixes across clouds. We only treat URLs on these hosts as blob
+    // targets so AAD bearer tokens are never sent to an arbitrary host the user might supply.
+    private static readonly string[] BlobHostSuffixes =
+    [
+        ".blob.core.windows.net",       // Azure public cloud
+        ".blob.core.usgovcloudapi.net", // Azure US Government
+        ".blob.core.chinacloudapi.cn",  // Azure China
+        ".blob.core.cloudapi.de",       // Azure Germany (legacy)
+    ];
+
+    /// <summary>
+    /// True only when <paramref name="value"/> is an absolute HTTPS URL on a known Azure Storage
+    /// blob endpoint. Non-Azure or non-HTTPS URLs are treated as local paths, so the credential
+    /// is never attached to a request bound for an untrusted host.
+    /// </summary>
+    public static bool IsAzureBlobUrl(string? value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri)
-        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        && uri.Scheme == Uri.UriSchemeHttps
+        && BlobHostSuffixes.Any(suffix => uri.Host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Downloads the text content of a single blob addressed by its full URL.</summary>
     public static async Task<string> ReadAllTextAsync(string blobUrl, TokenCredential credential, CancellationToken ct = default)
