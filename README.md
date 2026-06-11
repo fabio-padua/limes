@@ -26,10 +26,12 @@ Each pillar is scored `Initial → Developing → Defined → Managed → Optimi
 
 ## Run modes
 
-- **Deterministic mode** *(shipped — Phase 1)* — a pure C# rules engine. **$0 model cost.** Ideal for demos, CI, and dry runs.
-- **Agents mode** *(Phase 2)* — a pipeline of Azure AI Foundry agents for adaptive interviewing and reasoned narrative.
+- **Deterministic mode** *(shipped)* — a pure C# rules engine. **$0 model cost.** Ideal for demos, CI, and dry runs. Produces the full deliverable (scores + roadmap + skilling + risk register).
+- **Agents mode** *(Phase 2 — scaffolded)* — the same six-stage pipeline backed by Azure AI Foundry agents (Microsoft Agent Framework). Each stage runs its deterministic counterpart for authoritative, reproducible structured output, then layers grounded narrative on top — so scores are never hallucinated. Falls back cleanly to deterministic results if the model call fails.
 
-## The agent pantheon *(Phase 2)*
+## The agent pantheon
+
+The pipeline runs `Janus → Iustitia → Providentia → Egeria → Terminus → Fama`, grounded by Minerva:
 
 | Stage | Codename | Domain |
 | --- | --- | --- |
@@ -50,9 +52,17 @@ dotnet build Limes.sln
 # Run tests
 dotnet test Limes.sln
 
-# Run a deterministic assessment on the sample intake
+# Run a deterministic assessment on the sample intake ($0 model cost)
 dotnet run --project src/Limes.Orchestrator -- samples/sample-intake.json out
+
+# Run the agents-mode pipeline (requires Azure AI Foundry)
+export LIMES_FOUNDRY_ENDPOINT="https://<resource>.openai.azure.com/"
+export LIMES_FOUNDRY_DEPLOYMENT="gpt-4.1-mini"
+dotnet run --project src/Limes.Orchestrator -- samples/sample-intake.json out \
+  --mode agents --knowledge knowledge/ai-coe-knowledge.md
 ```
+
+Agents mode authenticates with `DefaultAzureCredential` (managed identity / `az login`) — no keys in source. The `--knowledge` corpus is prompt-injected (and content-hashed) to ground the agents.
 
 Outputs `assessment-<partner>.json` and `assessment-<partner>.md` into the chosen output directory.
 
@@ -62,9 +72,11 @@ Outputs `assessment-<partner>.json` and `assessment-<partner>.md` into the chose
 Limes.sln
 src/
   Limes.Core/          # Domain models, deterministic scoring, intake, reporting
-  Limes.Orchestrator/  # CLI entrypoint (deterministic mode; agents mode in Phase 2)
+  Limes.Agents/        # Agent pipeline (MAF): Janus → … → Fama + Minerva grounding
+  Limes.Orchestrator/  # CLI entrypoint (--mode deterministic|agents)
 tests/
   Limes.Core.Tests/    # xUnit tests for the scoring engine
+  Limes.Agents.Tests/  # xUnit tests for the deterministic pipeline
 samples/               # Example intake JSON
 knowledge/             # Reference-knowledge corpus that grounds the agents (Minerva)
 docs/                  # Architecture & plan
@@ -73,7 +85,8 @@ docs/                  # Architecture & plan
 ## Roadmap
 
 - **Phase 1 — Deterministic MVP** ✅ scoring engine, JSON/Markdown reports, CI eval gate
-- **Phase 2 — Agents mode** — MAF + Foundry pipeline, `.docx`/`.pptx` deliverables
+- **Phase 2 — Agents mode** 🚧 MAF + Foundry pipeline scaffolded (deterministic fallback);
+  next: `azd` + Foundry infra, `.docx`/`.pptx` deliverables
 - **Phase 3 — Grounding & dashboard** — Microsoft Learn MCP / RAG, benchmarking
 - **Phase 4 — Partner packaging** — web intake UI, clone-and-rebrand
 

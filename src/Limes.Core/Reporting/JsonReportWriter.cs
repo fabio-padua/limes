@@ -14,4 +14,7 @@ public static class JsonReportWriter
     };
 
     public static string Write(AssessmentResult result) => JsonSerializer.Serialize(result, Options);
+
+    /// <summary>Serializes the full Phase 2 deliverable (scores + roadmap + skilling + risk).</summary>
+    public static string Write(AssessmentDeliverable deliverable) => JsonSerializer.Serialize(deliverable, Options);
 }

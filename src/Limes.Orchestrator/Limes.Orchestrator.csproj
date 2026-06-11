@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Limes.Core\Limes.Core.csproj" />
+    <ProjectReference Include="..\Limes.Agents\Limes.Agents.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
