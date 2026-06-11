@@ -179,7 +179,9 @@ public static class PptxReportWriter
             TextShape(2, "Title", Margin, 381000, SlideCx - 2 * Margin, 1143000,
                 [new(title, 0, true, 32, Accent, false)]),
             TextShape(3, "Body", Margin, 1600200, SlideCx - 2 * Margin, 4800600,
-                bodyLines.Select(l => l with { Text = "•  " + l.Text }).ToList()));
+                // Non-breaking spaces keep the bullet gap from collapsing across viewers,
+                // independent of xml:space handling in DrawingML text runs.
+                bodyLines.Select(l => l with { Text = "\u2022\u00A0\u00A0" + l.Text }).ToList()));
 
     // ---- OpenXML scaffolding ----
 

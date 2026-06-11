@@ -155,7 +155,9 @@ public static class DocxReportWriter
     {
         var para = Para(text, sizeHalfPts: 22, italic: italic);
         if (indent)
-            para.ParagraphProperties = new ParagraphProperties(new Indentation { Left = "480" });
+            // Append to the properties Para already created (with spacing) rather than
+            // replacing them, so indented lines keep the document's consistent spacing.
+            para.ParagraphProperties!.AppendChild(new Indentation { Left = "480" });
         return para;
     }
 
