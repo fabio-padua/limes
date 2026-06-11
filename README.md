@@ -64,7 +64,7 @@ dotnet run --project src/Limes.Orchestrator -- samples/sample-intake.json out \
 
 Agents mode authenticates with `DefaultAzureCredential` (managed identity / `az login`) — no keys in source. The `--knowledge` corpus is prompt-injected (and content-hashed) to ground the agents.
 
-Outputs `assessment-<partner>.json` and `assessment-<partner>.md`. The **intake** argument accepts a local file path or a blob URL pointing at a single blob (`https://<account>.blob.core.windows.net/<container>/<blob>`). The **output** argument accepts a local directory or a container URL, optionally with a prefix (`https://<account>.blob.core.windows.net/<container>[/<prefix>]`), under which the report files are written. The same binary therefore runs locally or as a cloud job.
+Outputs four artifacts per run — `assessment-<partner>.json`, `.md`, a branded Word report (`.docx`), and a PowerPoint executive summary (`.pptx`). The `.docx`/`.pptx` are produced with the Open XML SDK, so no Office install is required (CI- and cloud-job-friendly). The **intake** argument accepts a local file path or a blob URL pointing at a single blob (`https://<account>.blob.core.windows.net/<container>/<blob>`). The **output** argument accepts a local directory or a container URL, optionally with a prefix (`https://<account>.blob.core.windows.net/<container>[/<prefix>]`), under which the report files are written. The same binary therefore runs locally or as a cloud job.
 
 ## Deploy to Azure (`azd`)
 
@@ -117,7 +117,7 @@ docs/                  # Architecture & plan
 
 - **Phase 1 — Deterministic MVP** ✅ scoring engine, JSON/Markdown reports, CI eval gate
 - **Phase 2 — Agents mode** 🚧 MAF + Foundry pipeline scaffolded (deterministic fallback);
-  `azd` + Foundry infra ✅ (Container Apps Job, Blob intake/reports); next: `.docx`/`.pptx` deliverables
+  `azd` + Foundry infra ✅ (Container Apps Job, Blob intake/reports); branded `.docx`/`.pptx` exec deliverables ✅
 - **Phase 3 — Grounding & dashboard** — Microsoft Learn MCP / RAG, benchmarking
 - **Phase 4 — Partner packaging** — web intake UI, clone-and-rebrand
 

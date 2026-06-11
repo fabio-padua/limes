@@ -48,12 +48,30 @@ internal static class RemoteIo
     public static async Task<Uri> WriteAllTextAsync(
         string outputUrl, string blobName, string content, TokenCredential credential, CancellationToken ct = default)
     {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        return await UploadAsync(outputUrl, blobName, stream, credential, ct);
+    }
+
+    /// <summary>
+    /// Uploads <paramref name="content"/> bytes as <paramref name="blobName"/> under the output
+    /// location addressed by <paramref name="outputUrl"/> (container URL with an optional prefix),
+    /// overwriting any existing blob. Used for binary deliverables such as .docx / .pptx. Returns the blob URI.
+    /// </summary>
+    public static async Task<Uri> WriteAllBytesAsync(
+        string outputUrl, string blobName, byte[] content, TokenCredential credential, CancellationToken ct = default)
+    {
+        using var stream = new MemoryStream(content);
+        return await UploadAsync(outputUrl, blobName, stream, credential, ct);
+    }
+
+    private static async Task<Uri> UploadAsync(
+        string outputUrl, string blobName, Stream content, TokenCredential credential, CancellationToken ct)
+    {
         var (containerUri, prefix) = SplitContainerAndPrefix(new Uri(outputUrl));
         var container = new BlobContainerClient(containerUri, credential);
         var fullName = string.IsNullOrEmpty(prefix) ? blobName : $"{prefix}/{blobName}";
         var blob = container.GetBlobClient(fullName);
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-        await blob.UploadAsync(stream, overwrite: true, ct);
+        await blob.UploadAsync(content, overwrite: true, ct);
         return blob.Uri;
     }
 
