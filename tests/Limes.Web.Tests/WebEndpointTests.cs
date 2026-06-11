@@ -94,8 +94,10 @@ public sealed class WebEndpointTests : IClassFixture<WebApplicationFactory<Progr
         var client = _factory.CreateClient();
         var assess = await client.PostAsync("/api/assess",
             new StringContent(SampleIntake, Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.OK, assess.StatusCode);
         var payload = await assess.Content.ReadFromJsonAsync<JsonElement>();
         var id = payload.GetProperty("id").GetString();
+        Assert.False(string.IsNullOrEmpty(id));
 
         var res = await client.GetAsync($"/api/assessments/{id}/download/{format}");
 

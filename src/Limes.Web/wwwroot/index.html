@@ -151,6 +151,8 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Only allow absolute http(s) links; reject javascript:/data: and other schemes.
+  const safeUrl = (u) => (typeof u === "string" && /^https?:\/\//i.test(u.trim())) ? u.trim() : null;
 
   let currentId = null;
 
@@ -168,7 +170,7 @@
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { $("intake").value = reader.result; setStatus(`Loaded ${file.name}.`); };
+    reader.onload = () => { $("intake").value = reader.result; setStatus(`Loaded ${esc(file.name)}.`); };
     reader.readAsText(file);
   });
 
@@ -253,13 +255,19 @@
 
   function renderSkilling(items) {
     if (!items || !items.length) { $("skilling").innerHTML = empty("No skilling recommendations were generated."); return; }
-    const rows = items.map((s) => `
+    const rows = items.map((s) => {
+      const href = safeUrl(s.url);
+      const path = href
+        ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(s.learnPath)}</a>`
+        : esc(s.learnPath);
+      return `
       <tr>
         <td>${esc(s.pillar)}</td>
         <td>${esc(s.gap)}</td>
-        <td>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.learnPath)}</a>` : esc(s.learnPath)}</td>
+        <td>${path}</td>
         <td>${esc(s.role || "—")}</td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
     $("skilling").innerHTML =
       `<table><thead><tr><th>Pillar</th><th>Gap</th><th>Microsoft Learn path</th><th>Role</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
