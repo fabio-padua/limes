@@ -207,7 +207,7 @@
     const p = d.partner;
     $("partnerMeta").textContent = [p.name, p.industry, p.region].filter(Boolean).join(" · ");
 
-    $("downloads").innerHTML = ["json", "md", "docx", "pptx"].map((f) =>
+    $("downloads").innerHTML = ["json", "md", "html", "docx", "pptx"].map((f) =>
       `<a class="btn" href="api/assessments/${currentId}/download/${f}">Download .${f}</a>`).join("");
 
     renderPillars(d.pillars);

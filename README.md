@@ -64,18 +64,18 @@ dotnet run --project src/Limes.Orchestrator -- samples/sample-intake.json out \
 
 Agents mode authenticates with `DefaultAzureCredential` (managed identity / `az login`) — no keys in source. The `--knowledge` corpus is prompt-injected (and content-hashed) to ground the agents.
 
-Outputs four artifacts per run — `assessment-<partner>.json`, `.md`, a branded Word report (`.docx`), and a PowerPoint executive summary (`.pptx`). The `.docx`/`.pptx` are produced with the Open XML SDK, so no Office install is required (CI- and cloud-job-friendly). The **intake** argument accepts a local file path or a blob URL pointing at a single blob (`https://<account>.blob.core.windows.net/<container>/<blob>`). The **output** argument accepts a local directory or a container URL, optionally with a prefix (`https://<account>.blob.core.windows.net/<container>[/<prefix>]`), under which the report files are written. The same binary therefore runs locally or as a cloud job.
+Outputs five artifacts per run — `assessment-<partner>.json`, `.md`, a self-contained interactive HTML report (`.html`), a branded Word report (`.docx`), and a PowerPoint executive summary (`.pptx`). The `.html` inlines all styling (no external assets or network calls), so it can be emailed or opened straight from disk. The `.docx`/`.pptx` are produced with the Open XML SDK, so no Office install is required (CI- and cloud-job-friendly). The **intake** argument accepts a local file path or a blob URL pointing at a single blob (`https://<account>.blob.core.windows.net/<container>/<blob>`). The **output** argument accepts a local directory or a container URL, optionally with a prefix (`https://<account>.blob.core.windows.net/<container>[/<prefix>]`), under which the report files are written. The same binary therefore runs locally or as a cloud job.
 
 ### Web UI
 
-For a point-and-click demo, `Limes.Web` is a small ASP.NET Core app that runs the deterministic pipeline behind a browser UI — paste, upload, or load the bundled sample intake, see the Readiness Index, pillar scores, gaps, roadmap, skilling plan, and risk register, then download any of the four artifacts.
+For a point-and-click demo, `Limes.Web` is a small ASP.NET Core app that runs the deterministic pipeline behind a browser UI — paste, upload, or load the bundled sample intake, see the Readiness Index, pillar scores, gaps, roadmap, skilling plan, and risk register, then download any of the five artifacts.
 
 ```bash
 dotnet run --project src/Limes.Web
 # then open the printed URL (e.g. http://localhost:5xxx)
 ```
 
-It calls the same `Limes.Core`/`Limes.Agents` engine, so it stays $0 model cost with no Azure required. Key endpoints: `POST /api/assess` (intake JSON → scored result) and `GET /api/assessments/{id}/download/{json|md|docx|pptx}`.
+It calls the same `Limes.Core`/`Limes.Agents` engine, so it stays $0 model cost with no Azure required. Key endpoints: `POST /api/assess` (intake JSON → scored result) and `GET /api/assessments/{id}/download/{json|md|html|docx|pptx}`.
 
 ## Deploy to Azure (`azd`)
 
@@ -130,7 +130,7 @@ docs/                  # Architecture & plan
 
 - **Phase 1 — Deterministic MVP** ✅ scoring engine, JSON/Markdown reports, CI eval gate
 - **Phase 2 — Agents mode** 🚧 MAF + Foundry pipeline scaffolded (deterministic fallback);
-  `azd` + Foundry infra ✅ (Container Apps Job, Blob intake/reports); branded `.docx`/`.pptx` exec deliverables ✅
+  `azd` + Foundry infra ✅ (Container Apps Job, Blob intake/reports); branded `.docx`/`.pptx` + self-contained `.html` exec deliverables ✅
 - **Phase 3 — Grounding & dashboard** — Microsoft Learn MCP / RAG, benchmarking
 - **Phase 4 — Partner packaging** — web intake UI ✅ (`Limes.Web`), clone-and-rebrand
 

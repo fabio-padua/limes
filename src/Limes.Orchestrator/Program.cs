@@ -104,21 +104,25 @@ if (string.IsNullOrEmpty(slug)) slug = "partner";
 
 var jsonContent = JsonReportWriter.Write(deliverable);
 var mdContent = MarkdownReportWriter.Write(deliverable);
+var htmlContent = HtmlReportWriter.Write(deliverable);
 var docxContent = DocxReportWriter.Write(deliverable);
 var pptxContent = PptxReportWriter.Write(deliverable);
 var jsonName = $"assessment-{slug}.json";
 var mdName = $"assessment-{slug}.md";
+var htmlName = $"assessment-{slug}.html";
 var docxName = $"assessment-{slug}.docx";
 var pptxName = $"assessment-{slug}.pptx";
 
 string jsonLocation;
 string mdLocation;
+string htmlLocation;
 string docxLocation;
 string pptxLocation;
 if (outputIsBlob)
 {
     jsonLocation = (await RemoteIo.WriteAllTextAsync(parsed.OutputDir, jsonName, jsonContent, credential)).ToString();
     mdLocation = (await RemoteIo.WriteAllTextAsync(parsed.OutputDir, mdName, mdContent, credential)).ToString();
+    htmlLocation = (await RemoteIo.WriteAllTextAsync(parsed.OutputDir, htmlName, htmlContent, credential)).ToString();
     docxLocation = (await RemoteIo.WriteAllBytesAsync(parsed.OutputDir, docxName, docxContent, credential)).ToString();
     pptxLocation = (await RemoteIo.WriteAllBytesAsync(parsed.OutputDir, pptxName, pptxContent, credential)).ToString();
 }
@@ -126,10 +130,12 @@ else
 {
     jsonLocation = Path.Combine(parsed.OutputDir, jsonName);
     mdLocation = Path.Combine(parsed.OutputDir, mdName);
+    htmlLocation = Path.Combine(parsed.OutputDir, htmlName);
     docxLocation = Path.Combine(parsed.OutputDir, docxName);
     pptxLocation = Path.Combine(parsed.OutputDir, pptxName);
     await File.WriteAllTextAsync(jsonLocation, jsonContent);
     await File.WriteAllTextAsync(mdLocation, mdContent);
+    await File.WriteAllTextAsync(htmlLocation, htmlContent);
     await File.WriteAllBytesAsync(docxLocation, docxContent);
     await File.WriteAllBytesAsync(pptxLocation, pptxContent);
 }
@@ -141,6 +147,7 @@ Console.WriteLine($"  Skilling recs:   {deliverable.SkillingPlan?.Recommendation
 Console.WriteLine($"  Risks:           {deliverable.RiskRegister?.Risks.Count ?? 0}");
 Console.WriteLine($"  JSON: {jsonLocation}");
 Console.WriteLine($"  Markdown: {mdLocation}");
+Console.WriteLine($"  HTML: {htmlLocation}");
 Console.WriteLine($"  Word: {docxLocation}");
 Console.WriteLine($"  PowerPoint: {pptxLocation}");
 

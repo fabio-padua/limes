@@ -108,7 +108,7 @@ app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, ILogg
     return Results.Json(AssessmentResponse.From(id, deliverable), jsonOptions);
 });
 
-// Download any of the four report artifacts for a previously-run assessment.
+// Download any of the five report artifacts for a previously-run assessment.
 app.MapGet("/api/assessments/{id}/download/{format}", (string id, string format, IMemoryCache cache) =>
 {
     if (!cache.TryGetValue(id, out AssessmentDeliverable? deliverable) || deliverable is null)
@@ -123,6 +123,9 @@ app.MapGet("/api/assessments/{id}/download/{format}", (string id, string format,
         "md" => Results.File(
             Encoding.UTF8.GetBytes(MarkdownReportWriter.Write(deliverable)),
             "text/markdown", $"assessment-{slug}.md"),
+        "html" => Results.File(
+            Encoding.UTF8.GetBytes(HtmlReportWriter.Write(deliverable)),
+            "text/html", $"assessment-{slug}.html"),
         "docx" => Results.File(
             DocxReportWriter.Write(deliverable),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -131,7 +134,7 @@ app.MapGet("/api/assessments/{id}/download/{format}", (string id, string format,
             PptxReportWriter.Write(deliverable),
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             $"assessment-{slug}.pptx"),
-        _ => Results.BadRequest(new { error = $"Unknown format '{format}'. Use json, md, docx, or pptx." }),
+        _ => Results.BadRequest(new { error = $"Unknown format '{format}'. Use json, md, html, docx, or pptx." }),
     };
 });
 
