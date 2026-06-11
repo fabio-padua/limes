@@ -21,14 +21,26 @@ public sealed class MinervaKnowledgeSource : IKnowledgeSource
         ContentHash = ComputeHash(ReferenceBlock);
     }
 
-    /// <summary>Loads the corpus from a Markdown file. Returns <c>null</c> if the file is missing.</summary>
+    /// <summary>
+    /// Loads the corpus from a Markdown file. Returns <c>null</c> if the file is missing or
+    /// cannot be read (e.g. permission, invalid path, or path-too-long errors), so callers can
+    /// degrade gracefully and continue ungrounded instead of crashing.
+    /// </summary>
     public static MinervaKnowledgeSource? TryLoadFile(string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             return null;
 
-        var content = File.ReadAllText(path);
-        return new MinervaKnowledgeSource(Path.GetFileName(path), content);
+        try
+        {
+            var content = File.ReadAllText(path);
+            return new MinervaKnowledgeSource(Path.GetFileName(path), content);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+            or ArgumentException or NotSupportedException or System.Security.SecurityException)
+        {
+            return null;
+        }
     }
 
     /// <summary>A compact "name@shorthash" descriptor for deliverable footers.</summary>

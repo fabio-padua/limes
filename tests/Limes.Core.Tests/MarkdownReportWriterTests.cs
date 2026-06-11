@@ -64,6 +64,24 @@ public class MarkdownReportWriterTests
     }
 
     [Fact]
+    public void Write_EscapesMarkdownLinkMetacharactersInFlowText()
+    {
+        var result = new AssessmentResult
+        {
+            Partner = new PartnerProfile { Name = "[click](javascript:alert(1))" },
+            PillarScores = [],
+            ReadinessIndex = 2.0,
+            OverallLevel = MaturityLevel.Defined,
+        };
+
+        var md = MarkdownReportWriter.Write(result);
+
+        // The injected link must not survive as renderable Markdown; brackets/parens are escaped.
+        Assert.DoesNotContain("[click](javascript:alert(1))", md);
+        Assert.Contains("\\[click\\]\\(javascript:alert\\(1\\)\\)", md);
+    }
+
+    [Fact]
     public void Write_HtmlEncodesKnowledgeSourceFooter()
     {
         var deliverable = new AssessmentDeliverable
@@ -76,7 +94,7 @@ public class MarkdownReportWriterTests
 
         var md = MarkdownReportWriter.Write(deliverable);
 
-        Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt;", md);
+        Assert.Contains("&lt;script&gt;alert\\(1\\)&lt;/script&gt;", md);
         Assert.DoesNotContain("<script>alert(1)</script>", md);
     }
 

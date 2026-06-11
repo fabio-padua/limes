@@ -130,7 +130,7 @@ public static class MarkdownReportWriter
             // literally and can't inject markup (e.g. </details><script>) in HTML contexts.
             sb.AppendLine("<pre>");
             foreach (var line in deliverable.PipelineTrace)
-                sb.AppendLine(Encode(line));
+                sb.AppendLine(EncodeHtml(line));
             sb.AppendLine("</pre>");
             sb.AppendLine();
             sb.AppendLine("</details>");
@@ -172,12 +172,26 @@ public static class MarkdownReportWriter
     }
 
     /// <summary>
-    /// Minimal HTML-entity encoding (&amp;, &lt;, &gt;) applied to any potentially untrusted
-    /// text written into the Markdown report — partner header, gaps, roadmap text,
-    /// KnowledgeSource footer, table cells, and the pipeline trace — so attacker-controlled
-    /// content cannot inject raw HTML when the Markdown is rendered.
+    /// Escapes untrusted text for safe inclusion in Markdown <em>flow</em> content: HTML-encodes
+    /// (&amp;, &lt;, &gt;) so raw markup can't be injected, then backslash-escapes the Markdown
+    /// link/image metacharacters (<c>[ ] ( )</c>) so untrusted strings (partner header, gaps,
+    /// roadmap text, KnowledgeSource footer, table cells) can't introduce links or images
+    /// (e.g. <c>[x](javascript:...)</c> or <c>![](...)</c>) outside the validated
+    /// <see cref="SafeUrl"/> path.
     /// </summary>
     private static string Encode(string? value) =>
+        EncodeHtml(value)
+            .Replace("[", "\\[")
+            .Replace("]", "\\]")
+            .Replace("(", "\\(")
+            .Replace(")", "\\)");
+
+    /// <summary>
+    /// Minimal HTML-entity encoding (&amp;, &lt;, &gt;) for text written into raw-HTML blocks
+    /// such as the <c>&lt;pre&gt;</c> pipeline trace, where Markdown isn't interpreted and the
+    /// only injection risk is raw markup.
+    /// </summary>
+    private static string EncodeHtml(string? value) =>
         (value ?? string.Empty)
             .Replace("&", "&amp;")
             .Replace("<", "&lt;")

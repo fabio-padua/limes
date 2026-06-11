@@ -56,7 +56,7 @@ if (parsed.Mode == AssessmentMode.Agents)
     {
         knowledge = MinervaKnowledgeSource.TryLoadFile(parsed.KnowledgePath);
         if (knowledge is null)
-            Console.Error.WriteLine($"Warning: knowledge file not found, continuing ungrounded: {parsed.KnowledgePath}");
+            Console.Error.WriteLine($"Warning: knowledge file could not be loaded, continuing ungrounded: {parsed.KnowledgePath}");
     }
 
     var factory = new FoundryAgentFactory(connection);
