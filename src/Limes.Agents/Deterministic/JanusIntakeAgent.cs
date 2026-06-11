@@ -19,7 +19,15 @@ public sealed class JanusIntakeAgent : ILimesAgent
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var byPillar = context.Intake.Pillars.ToDictionary(p => p.Pillar);
+        var byPillar = new Dictionary<Pillar, PillarResponse>();
+        var duplicatePillars = 0;
+        foreach (var p in context.Intake.Pillars)
+        {
+            // Tolerate duplicate pillar blocks in the intake: keep the first occurrence.
+            if (!byPillar.TryAdd(p.Pillar, p))
+                duplicatePillars++;
+        }
+
         var normalized = new List<PillarResponse>(PillarInfo.All.Count);
         var duplicatesDropped = 0;
         var pillarsAdded = 0;
@@ -41,7 +49,8 @@ public sealed class JanusIntakeAgent : ILimesAgent
 
         context.Intake = context.Intake with { Pillars = normalized };
         context.Note(Codename,
-            $"normalized {normalized.Count} pillars (added {pillarsAdded} missing, dropped {duplicatesDropped} duplicate responses).");
+            $"normalized {normalized.Count} pillars (added {pillarsAdded} missing, dropped " +
+            $"{duplicatePillars} duplicate pillar block(s) and {duplicatesDropped} duplicate response(s)).");
 
         return Task.CompletedTask;
     }

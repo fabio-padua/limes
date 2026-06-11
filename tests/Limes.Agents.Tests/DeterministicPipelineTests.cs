@@ -95,6 +95,34 @@ public class DeterministicPipelineTests
     }
 
     [Fact]
+    public async Task Janus_ToleratesDuplicatePillarBlocks_KeepingFirst()
+    {
+        // Two blocks for the same pillar — Janus must not throw and should keep the first.
+        var ctx = new AssessmentContext
+        {
+            Intake = IntakeWith(
+                new PillarResponse
+                {
+                    Pillar = Domain.Pillar.DataFoundations,
+                    Responses = [new QuestionResponse { QuestionId = "A", Prompt = "first-block", Score = 4 }],
+                },
+                new PillarResponse
+                {
+                    Pillar = Domain.Pillar.DataFoundations,
+                    Responses = [new QuestionResponse { QuestionId = "B", Prompt = "second-block", Score = 1 }],
+                }),
+            Mode = AssessmentMode.Deterministic,
+        };
+
+        await new JanusIntakeAgent().RunAsync(ctx);
+
+        var data = ctx.Intake.Pillars.Single(p => p.Pillar == Domain.Pillar.DataFoundations);
+        var response = Assert.Single(data.Responses);
+        Assert.Equal("first-block", response.Prompt);
+        Assert.Equal(PillarInfo.All.Count, ctx.Intake.Pillars.Count);
+    }
+
+    [Fact]
     public async Task Providentia_SkipsHealthyPillars()
     {
         // Every pillar at 5/5 → no remediation actions.

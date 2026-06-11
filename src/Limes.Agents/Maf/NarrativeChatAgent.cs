@@ -34,6 +34,11 @@ public sealed class NarrativeChatAgent : ChatAgentBase
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        // Record the grounding descriptor before the fallback runs so that when Fama assembles
+        // the deliverable it already carries the knowledge source.
+        if (KnowledgeDescriptor is not null && string.IsNullOrEmpty(context.KnowledgeSource))
+            context.KnowledgeSource = KnowledgeDescriptor;
+
         // Deterministic structured computation is always authoritative.
         await _fallback.RunAsync(context, cancellationToken).ConfigureAwait(false);
 
@@ -46,6 +51,18 @@ public sealed class NarrativeChatAgent : ChatAgentBase
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Note(Codename, $"LLM narrative unavailable, using deterministic result ({ex.GetType().Name}).");
+        }
+
+        // If a deliverable was already assembled (e.g. this stage wraps Fama), refresh it so the
+        // returned deliverable reflects the final trace — including the narrative note appended
+        // above — and the grounding descriptor.
+        if (context.Deliverable is not null)
+        {
+            context.Deliverable = context.Deliverable with
+            {
+                PipelineTrace = context.Trace.ToList(),
+                KnowledgeSource = context.KnowledgeSource,
+            };
         }
     }
 
