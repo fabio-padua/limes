@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Limes.Core\Limes.Core.csproj" />
+    <ProjectReference Include="..\Limes.Agents\Limes.Agents.csproj" />
+  </ItemGroup>
+
+  <!-- Single source of truth: embed the repo sample intake so the UI can load it
+       via /api/sample regardless of content root (dotnet run, publish, or tests). -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\samples\sample-intake.json" Link="sample-intake.json" LogicalName="Limes.Web.sample-intake.json" />
+  </ItemGroup>
+
+</Project>
