@@ -64,7 +64,7 @@ dotnet run --project src/Limes.Orchestrator -- samples/sample-intake.json out \
 
 Agents mode authenticates with `DefaultAzureCredential` (managed identity / `az login`) — no keys in source. The `--knowledge` corpus is prompt-injected (and content-hashed) to ground the agents.
 
-Outputs `assessment-<partner>.json` and `assessment-<partner>.md` into the chosen output directory. The intake and output arguments each accept **either a local path or an Azure Blob URL** (`https://<account>.blob.core.windows.net/<container>[/blob]`), so the same binary runs locally or as a cloud job.
+Outputs `assessment-<partner>.json` and `assessment-<partner>.md`. The **intake** argument accepts a local file path or a blob URL pointing at a single blob (`https://<account>.blob.core.windows.net/<container>/<blob>`). The **output** argument accepts a local directory or a container URL, optionally with a prefix (`https://<account>.blob.core.windows.net/<container>[/<prefix>]`), under which the report files are written. The same binary therefore runs locally or as a cloud job.
 
 ## Deploy to Azure (`azd`)
 

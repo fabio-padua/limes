@@ -200,7 +200,9 @@ internal sealed record OrchestratorArgs
         if (intakePath is null)
         {
             Console.Error.WriteLine("Usage: Limes.Orchestrator <intake> [output] [--mode deterministic|agents] [--knowledge <path>]");
-            Console.Error.WriteLine("  <intake>/[output] accept a local path or an Azure Blob URL (https://...).");
+            Console.Error.WriteLine("  <intake>  local file path, or a blob URL: https://<account>.blob.core.windows.net/<container>/<blob>");
+            Console.Error.WriteLine("  [output]  local directory, or a container URL (optionally with a prefix):");
+            Console.Error.WriteLine("            https://<account>.blob.core.windows.net/<container>[/<prefix>]");
             Console.Error.WriteLine("  May also be supplied via LIMES_INTAKE / LIMES_OUTPUT / LIMES_MODE / LIMES_KNOWLEDGE.");
             return null;
         }

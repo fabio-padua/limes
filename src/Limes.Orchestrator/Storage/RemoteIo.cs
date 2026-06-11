@@ -40,16 +40,35 @@ internal static class RemoteIo
     }
 
     /// <summary>
-    /// Uploads <paramref name="content"/> as <paramref name="blobName"/> into the blob container
-    /// addressed by <paramref name="containerUrl"/>, overwriting any existing blob. Returns the blob URI.
+    /// Uploads <paramref name="content"/> as <paramref name="blobName"/> under the output location
+    /// addressed by <paramref name="outputUrl"/>, overwriting any existing blob. The output URL is a
+    /// container URL, optionally with a path prefix (e.g. <c>.../reports/2026/q2</c>); the prefix is
+    /// preserved and <paramref name="blobName"/> is appended beneath it. Returns the blob URI.
     /// </summary>
     public static async Task<Uri> WriteAllTextAsync(
-        string containerUrl, string blobName, string content, TokenCredential credential, CancellationToken ct = default)
+        string outputUrl, string blobName, string content, TokenCredential credential, CancellationToken ct = default)
     {
-        var container = new BlobContainerClient(new Uri(containerUrl), credential);
-        var blob = container.GetBlobClient(blobName);
+        var (containerUri, prefix) = SplitContainerAndPrefix(new Uri(outputUrl));
+        var container = new BlobContainerClient(containerUri, credential);
+        var fullName = string.IsNullOrEmpty(prefix) ? blobName : $"{prefix}/{blobName}";
+        var blob = container.GetBlobClient(fullName);
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
         await blob.UploadAsync(stream, overwrite: true, ct);
         return blob.Uri;
+    }
+
+    /// <summary>
+    /// Splits a blob/container URL into the container URL (account + first path segment) and an
+    /// optional blob-name prefix (the remaining path segments). This lets callers point output at
+    /// either a bare container (<c>.../reports</c>) or a "folder" within it (<c>.../reports/run-1</c>)
+    /// without producing a surprising upload URI.
+    /// </summary>
+    private static (Uri ContainerUri, string Prefix) SplitContainerAndPrefix(Uri uri)
+    {
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var container = segments.Length > 0 ? segments[0] : string.Empty;
+        var prefix = string.Join('/', segments.Skip(1));
+        var containerUri = new UriBuilder(uri) { Path = "/" + container, Query = string.Empty }.Uri;
+        return (containerUri, prefix);
     }
 }

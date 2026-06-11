@@ -235,7 +235,6 @@ resource userOpenAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = i
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', openAiUserRoleId)
     principalId: principalId
-    principalType: 'User'
   }
 }
 
@@ -245,7 +244,6 @@ resource userBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributorRoleId)
     principalId: principalId
-    principalType: 'User'
   }
 }
 
