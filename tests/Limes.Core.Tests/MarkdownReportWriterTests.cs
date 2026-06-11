@@ -88,8 +88,10 @@ public class MarkdownReportWriterTests
     {
         var md = MarkdownReportWriter.Write(SkillingDeliverable(url));
 
-        // No Markdown link is emitted; the dangerous scheme never reaches the link target.
-        Assert.DoesNotContain("](", md);
+        // The Learn-path cell is rendered as plain text (not a link) and the dangerous scheme
+        // never reaches a link target.
+        Assert.Contains("Some learn path", md);
+        Assert.DoesNotContain("[Some learn path](", md);
         Assert.DoesNotContain("javascript:", md);
         Assert.DoesNotContain("data:text/html", md);
     }

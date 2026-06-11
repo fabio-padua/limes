@@ -26,7 +26,16 @@ if (!File.Exists(parsed.IntakePath))
     return 1;
 }
 
-Directory.CreateDirectory(parsed.OutputDir);
+try
+{
+    Directory.CreateDirectory(parsed.OutputDir);
+}
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+    or ArgumentException or NotSupportedException or PathTooLongException)
+{
+    Console.Error.WriteLine($"Could not create output directory '{parsed.OutputDir}': {ex.Message}");
+    return 1;
+}
 
 var intake = await IntakeLoader.FromFileAsync(parsed.IntakePath);
 
