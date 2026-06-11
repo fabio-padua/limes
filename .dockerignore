@@ -1,0 +1,13 @@
+# Keep the Docker build context lean and deterministic.
+**/bin/
+**/obj/
+**/out/
+**/reports/
+.git/
+.github/
+.azure/
+.vs/
+docs/
+tests/
+*.md
+!knowledge/*.md

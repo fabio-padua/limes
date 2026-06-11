@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: limes
+metadata:
+  template: limes-phase2
+
+# The orchestrator runs as a Container Apps Job (batch, scales to zero). azd builds the
+# image from the Dockerfile, pushes it to ACR, and updates the job tagged azd-service-name: orchestrator.
+services:
+  orchestrator:
+    project: ./src/Limes.Orchestrator
+    language: dotnet
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: ../..

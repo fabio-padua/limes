@@ -486,3 +486,9 @@ $RECYCLE.BIN/
 # Limes output
 out/
 reports/
+
+# Azure Developer CLI (azd) local environment state
+.azure/
+
+# Compiled Bicep
+infra/main.json
