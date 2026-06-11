@@ -56,4 +56,79 @@ public static class MarkdownReportWriter
 
         return sb.ToString();
     }
+
+    /// <summary>Renders the full Phase 2 deliverable: scores, roadmap, skilling, risk, and pipeline trace.</summary>
+    public static string Write(AssessmentDeliverable deliverable)
+    {
+        var c = CultureInfo.InvariantCulture;
+        var sb = new StringBuilder();
+
+        sb.Append(Write(deliverable.Assessment));
+
+        if (deliverable.Roadmap is { Actions.Count: > 0 } roadmap)
+        {
+            sb.AppendLine("## Remediation roadmap (Providentia)");
+            sb.AppendLine();
+            foreach (var wave in roadmap.Actions.GroupBy(a => a.Wave).OrderBy(g => g.Key))
+            {
+                sb.AppendLine($"### Wave {wave.Key}");
+                sb.AppendLine();
+                foreach (var a in wave.OrderBy(a => a.Pillar))
+                {
+                    sb.AppendLine($"- **{a.Title}** ({a.Pillar.DisplayName()}, {a.Priority})");
+                    sb.AppendLine($"  - {a.Description}");
+                    if (a.DependsOn.Count > 0)
+                        sb.AppendLine($"  - Depends on: {string.Join(", ", a.DependsOn)}");
+                    if (a.Citations.Count > 0)
+                        sb.AppendLine($"  - Grounding: {string.Join("; ", a.Citations)}");
+                }
+                sb.AppendLine();
+            }
+        }
+
+        if (deliverable.SkillingPlan is { Recommendations.Count: > 0 } skilling)
+        {
+            sb.AppendLine("## Skilling plan (Egeria)");
+            sb.AppendLine();
+            sb.AppendLine("| Pillar | Gap | Microsoft Learn path | Role |");
+            sb.AppendLine("| --- | --- | --- | --- |");
+            foreach (var r in skilling.Recommendations)
+            {
+                var path = string.IsNullOrWhiteSpace(r.Url) ? r.LearnPath : $"[{r.LearnPath}]({r.Url})";
+                sb.AppendLine($"| {r.Pillar.DisplayName()} | {r.Gap} | {path} | {r.Role ?? "—"} |");
+            }
+            sb.AppendLine();
+        }
+
+        if (deliverable.RiskRegister is { Risks.Count: > 0 } risks)
+        {
+            sb.AppendLine("## Risk register (Terminus)");
+            sb.AppendLine();
+            sb.AppendLine("| Severity | Pillar | Risk | Mitigation |");
+            sb.AppendLine("| --- | --- | --- | --- |");
+            foreach (var r in risks.Risks.OrderByDescending(r => r.Severity))
+            {
+                sb.AppendLine($"| {r.Severity} | {r.Pillar.DisplayName()} | {r.Title} | {r.Mitigation} |");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("---");
+        sb.AppendLine();
+        sb.AppendLine($"_Mode: {deliverable.Mode} · Generated: {deliverable.GeneratedAtUtc.ToString("u", c)}_");
+        if (!string.IsNullOrWhiteSpace(deliverable.KnowledgeSource))
+            sb.AppendLine($"_Grounding corpus: {deliverable.KnowledgeSource}_");
+        if (deliverable.PipelineTrace.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("<details><summary>Pipeline trace</summary>");
+            sb.AppendLine();
+            foreach (var line in deliverable.PipelineTrace)
+                sb.AppendLine($"- {line}");
+            sb.AppendLine();
+            sb.AppendLine("</details>");
+        }
+
+        return sb.ToString();
+    }
 }
