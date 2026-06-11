@@ -71,9 +71,19 @@ internal static class RemoteIo
             .Split('/', StringSplitOptions.RemoveEmptyEntries)
             .Select(Uri.UnescapeDataString)
             .ToArray();
-        var container = segments.Length > 0 ? segments[0] : string.Empty;
+        if (segments.Length == 0)
+            throw new ArgumentException(
+                $"Output blob URL '{uri}' must include a container name, e.g. " +
+                "https://<account>.blob.core.windows.net/<container>[/<prefix>].",
+                nameof(uri));
+        var container = segments[0];
         var prefix = string.Join('/', segments.Skip(1));
-        var containerUri = new UriBuilder(uri) { Path = "/" + Uri.EscapeDataString(container), Query = string.Empty }.Uri;
+        var containerUri = new UriBuilder(uri)
+        {
+            Path = "/" + Uri.EscapeDataString(container),
+            Query = string.Empty,
+            Fragment = string.Empty,
+        }.Uri;
         return (containerUri, prefix);
     }
 }

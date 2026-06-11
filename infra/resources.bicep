@@ -56,7 +56,7 @@ resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   tags: tags
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: 'acr${resourceToken}'
   location: location
   tags: tags
@@ -207,9 +207,19 @@ resource jobOpenAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-resource jobBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id, uami.id, blobDataContributorRoleId)
-  scope: storage
+resource jobIntakeBlob 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(intakeContainer.id, uami.id, blobDataContributorRoleId)
+  scope: intakeContainer
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributorRoleId)
+    principalId: uami.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource jobReportsBlob 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(reportsContainer.id, uami.id, blobDataContributorRoleId)
+  scope: reportsContainer
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributorRoleId)
     principalId: uami.properties.principalId
@@ -238,9 +248,18 @@ resource userOpenAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = i
   }
 }
 
-resource userBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
-  name: guid(storage.id, principalId, blobDataContributorRoleId)
-  scope: storage
+resource userIntakeBlob 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
+  name: guid(intakeContainer.id, principalId, blobDataContributorRoleId)
+  scope: intakeContainer
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributorRoleId)
+    principalId: principalId
+  }
+}
+
+resource userReportsBlob 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
+  name: guid(reportsContainer.id, principalId, blobDataContributorRoleId)
+  scope: reportsContainer
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributorRoleId)
     principalId: principalId
