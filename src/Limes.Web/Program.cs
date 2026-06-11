@@ -9,7 +9,9 @@ using Limes.Web;
 using Microsoft.Extensions.Caching.Memory;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddMemoryCache();
+// Bound the assessment cache so repeated runs can't grow memory without limit. Each entry
+// counts as size 1, so this caps the number of retained deliverables.
+builder.Services.AddMemoryCache(o => o.SizeLimit = 256);
 
 var app = builder.Build();
 
@@ -23,7 +25,10 @@ var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
 };
 
 // How long a generated deliverable stays downloadable after the run that produced it.
-var cacheTtl = TimeSpan.FromHours(1);
+// Sliding keeps active assessments alive between downloads; absolute caps total retention
+// so a client that keeps downloading can't pin an entry indefinitely.
+var cacheSlidingTtl = TimeSpan.FromHours(1);
+var cacheAbsoluteTtl = TimeSpan.FromHours(4);
 
 // Cap intake size so a single request can't force the server to buffer an unbounded body.
 const long maxIntakeBytes = 1 * 1024 * 1024; // 1 MB is generous for an intake JSON.
@@ -93,7 +98,12 @@ app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, ILogg
     }
 
     var id = Guid.NewGuid().ToString("N");
-    cache.Set(id, deliverable, new MemoryCacheEntryOptions { SlidingExpiration = cacheTtl });
+    cache.Set(id, deliverable, new MemoryCacheEntryOptions
+    {
+        Size = 1,
+        SlidingExpiration = cacheSlidingTtl,
+        AbsoluteExpirationRelativeToNow = cacheAbsoluteTtl,
+    });
 
     return Results.Json(AssessmentResponse.From(id, deliverable), jsonOptions);
 });
@@ -130,6 +140,8 @@ app.Run();
 static string Slug(string name)
 {
     var slug = string.Concat(name.Where(char.IsLetterOrDigit)).ToLowerInvariant();
+    if (slug.Length > 60)
+        slug = slug[..60];
     return string.IsNullOrEmpty(slug) ? "partner" : slug;
 }
 

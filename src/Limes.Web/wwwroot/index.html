@@ -93,13 +93,13 @@
   <section class="card">
     <h2>1 · Intake</h2>
     <p class="muted">Paste a partner intake JSON, upload a file, or load the bundled sample, then run the assessment.</p>
-    <textarea id="intake" spellcheck="false" placeholder="Paste intake JSON here…"></textarea>
+    <textarea id="intake" spellcheck="false" aria-label="Intake JSON" placeholder="Paste intake JSON here…"></textarea>
     <div class="row">
       <button id="assessBtn">Run assessment</button>
       <button class="secondary" id="sampleBtn">Load sample</button>
       <button class="secondary" id="uploadBtn">Upload file…</button>
       <input type="file" id="fileInput" accept="application/json,.json" class="hidden" />
-      <span id="status" class="muted"></span>
+      <span id="status" class="muted" role="status" aria-live="polite"></span>
     </div>
     <div id="error" class="err hidden"></div>
   </section>
