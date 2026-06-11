@@ -21,6 +21,9 @@ param principalId string
 @description('Orchestrator container image. Empty uses a placeholder until azd deploys the real one.')
 param orchestratorImage string
 
+@description('Web (Limes.Web) container image. Empty uses a placeholder until azd deploys the real one.')
+param webImage string
+
 // Built-in role definition IDs.
 var openAiUserRoleId = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd' // Cognitive Services OpenAI User
 var blobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe' // Storage Blob Data Contributor
@@ -28,6 +31,10 @@ var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull
 
 var placeholderImage = 'mcr.microsoft.com/k8se/quickstart-jobs:latest'
 var jobImage = empty(orchestratorImage) ? placeholderImage : orchestratorImage
+// Web placeholder listens on 80; the real Limes.Web image listens on 8080. The first-provision
+// revision is unhealthy until azd deploys the real image, which is the expected azd flow.
+var webPlaceholderImage = 'mcr.microsoft.com/k8se/quickstart:latest'
+var webImageResolved = empty(webImage) ? webPlaceholderImage : webImage
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: 'log-${resourceToken}'
@@ -195,6 +202,59 @@ resource job 'Microsoft.App/jobs@2024-03-01' = {
   }
 }
 
+// --- Limes.Web: long-lived Container App (browser UI + API) ---
+
+resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
+  name: 'ca-web-${resourceToken}'
+  location: location
+  // azd matches this tag to build/push the image and update the app on deploy.
+  tags: union(tags, { 'azd-service-name': 'web' })
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${uami.id}': {}
+    }
+  }
+  properties: {
+    managedEnvironmentId: caeEnv.id
+    configuration: {
+      activeRevisionsMode: 'Single'
+      ingress: {
+        external: true
+        targetPort: 8080
+        transport: 'auto'
+      }
+      registries: [
+        {
+          server: acr.properties.loginServer
+          identity: uami.id
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'web'
+          image: webImageResolved
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+          env: [
+            // Limes.Web runs the deterministic pipeline in-process — no Foundry/Blob needed.
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+          ]
+        }
+      ]
+      // Keep one warm replica for snappy demos; scale up under load.
+      scale: {
+        minReplicas: 1
+        maxReplicas: 3
+      }
+    }
+  }
+}
+
 // --- Role assignments: managed identity (job) ---
 
 resource jobOpenAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -274,3 +334,4 @@ output chatDeploymentName string = chat.name
 output intakeContainerUrl string = '${storage.properties.primaryEndpoints.blob}intake'
 output reportsContainerUrl string = '${storage.properties.primaryEndpoints.blob}reports'
 output jobName string = job.name
+output webUrl string = 'https://${webApp.properties.configuration.ingress.fqdn}'
