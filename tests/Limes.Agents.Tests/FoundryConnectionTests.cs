@@ -38,6 +38,19 @@ public class FoundryConnectionTests
         Assert.Equal("gpt-4.1", connection!.Deployment);
     }
 
+    [Fact]
+    public void FromEnvironment_TrimsWhitespaceAroundValues()
+    {
+        using var _ = new EnvScope("  https://contoso.openai.azure.com/  ", "  gpt-4.1\n");
+
+        var connection = FoundryConnection.FromEnvironment(out var reason);
+
+        Assert.NotNull(connection);
+        Assert.Null(reason);
+        Assert.Equal("gpt-4.1", connection!.Deployment);
+        Assert.Equal("https://contoso.openai.azure.com/", connection.Endpoint.AbsoluteUri);
+    }
+
     /// <summary>Sets the Foundry env vars for the test and restores the prior values on dispose.</summary>
     private sealed class EnvScope : IDisposable
     {

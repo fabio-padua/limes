@@ -22,8 +22,8 @@ public sealed record FoundryConnection
     /// </summary>
     public static FoundryConnection? FromEnvironment(out string? reason)
     {
-        var endpoint = Environment.GetEnvironmentVariable(EndpointEnvVar);
-        var deployment = Environment.GetEnvironmentVariable(DeploymentEnvVar);
+        var endpoint = Environment.GetEnvironmentVariable(EndpointEnvVar)?.Trim();
+        var deployment = Environment.GetEnvironmentVariable(DeploymentEnvVar)?.Trim();
 
         if (string.IsNullOrWhiteSpace(endpoint))
         {

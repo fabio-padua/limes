@@ -14,11 +14,11 @@ public static class MarkdownReportWriter
 
         sb.AppendLine($"# Limes — AI CoE Readiness Assessment");
         sb.AppendLine();
-        sb.AppendLine($"**Partner:** {result.Partner.Name}");
+        sb.AppendLine($"**Partner:** {Encode(result.Partner.Name)}");
         if (!string.IsNullOrWhiteSpace(result.Partner.Region))
-            sb.AppendLine($"**Region:** {result.Partner.Region}");
+            sb.AppendLine($"**Region:** {Encode(result.Partner.Region)}");
         if (!string.IsNullOrWhiteSpace(result.Partner.Industry))
-            sb.AppendLine($"**Industry:** {result.Partner.Industry}");
+            sb.AppendLine($"**Industry:** {Encode(result.Partner.Industry)}");
         sb.AppendLine($"**Generated:** {result.GeneratedAtUtc.ToString("u", c)}");
         sb.AppendLine();
         sb.AppendLine($"## Overall CoE Readiness Index: {result.ReadinessIndex.ToString("0.00", c)} / 5.00 — {result.OverallLevel.DisplayName()}");
@@ -48,7 +48,7 @@ public static class MarkdownReportWriter
                 sb.AppendLine($"### {p.Pillar.DisplayName()}");
                 foreach (var gap in p.Gaps)
                 {
-                    sb.AppendLine($"- {gap}");
+                    sb.AppendLine($"- {Encode(gap)}");
                 }
                 sb.AppendLine();
             }
@@ -75,12 +75,12 @@ public static class MarkdownReportWriter
                 sb.AppendLine();
                 foreach (var a in wave.OrderBy(a => a.Pillar))
                 {
-                    sb.AppendLine($"- **{a.Title}** ({a.Pillar.DisplayName()}, {a.Priority})");
-                    sb.AppendLine($"  - {a.Description}");
+                    sb.AppendLine($"- **{Encode(a.Title)}** ({a.Pillar.DisplayName()}, {a.Priority})");
+                    sb.AppendLine($"  - {Encode(a.Description)}");
                     if (a.DependsOn.Count > 0)
-                        sb.AppendLine($"  - Depends on: {string.Join(", ", a.DependsOn)}");
+                        sb.AppendLine($"  - Depends on: {Encode(string.Join(", ", a.DependsOn))}");
                     if (a.Citations.Count > 0)
-                        sb.AppendLine($"  - Grounding: {string.Join("; ", a.Citations)}");
+                        sb.AppendLine($"  - Grounding: {Encode(string.Join("; ", a.Citations))}");
                 }
                 sb.AppendLine();
             }
@@ -95,9 +95,8 @@ public static class MarkdownReportWriter
             foreach (var r in skilling.Recommendations)
             {
                 var pathText = Cell(r.LearnPath);
-                var path = string.IsNullOrWhiteSpace(r.Url)
-                    ? pathText
-                    : $"[{pathText}]({SanitizeUrl(r.Url)})";
+                var safeUrl = SafeUrl(r.Url);
+                var path = safeUrl is null ? pathText : $"[{pathText}]({safeUrl})";
                 sb.AppendLine($"| {Cell(r.Pillar.DisplayName())} | {Cell(r.Gap)} | {path} | {Cell(r.Role)} |");
             }
             sb.AppendLine();
@@ -120,7 +119,7 @@ public static class MarkdownReportWriter
         sb.AppendLine();
         sb.AppendLine($"_Mode: {deliverable.Mode} · Generated: {deliverable.GeneratedAtUtc.ToString("u", c)}_");
         if (!string.IsNullOrWhiteSpace(deliverable.KnowledgeSource))
-            sb.AppendLine($"_Grounding corpus: {deliverable.KnowledgeSource}_");
+            sb.AppendLine($"_Grounding corpus: {Encode(deliverable.KnowledgeSource)}_");
         if (deliverable.PipelineTrace.Count > 0)
         {
             sb.AppendLine();
@@ -139,21 +138,37 @@ public static class MarkdownReportWriter
         return sb.ToString();
     }
 
-    /// <summary>Escapes a value for safe inclusion in a Markdown table cell (pipes and newlines).</summary>
+    /// <summary>
+    /// Escapes a value for safe inclusion in a Markdown table cell: HTML-encodes so raw markup
+    /// can't be injected, escapes pipes so the cell can't break the table, and flattens newlines.
+    /// </summary>
     private static string Cell(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return "—";
-        return value
+        return Encode(value)
             .Replace("|", "\\|")
             .Replace("\r", " ")
             .Replace("\n", " ")
             .Trim();
     }
 
-    /// <summary>Neutralizes characters that would break a Markdown link target inside a table cell.</summary>
-    private static string SanitizeUrl(string url) =>
-        url.Replace(" ", "%20").Replace("|", "%7C").Replace("(", "%28").Replace(")", "%29").Trim();
+    /// <summary>
+    /// Validates a link target for use in a Markdown link: only absolute http/https URIs are
+    /// allowed (blocking <c>javascript:</c> and other dangerous schemes), and the well-formed URI
+    /// is escaped so it can't break out of the link parentheses. Returns <c>null</c> when the URL
+    /// is missing or unsafe, so the caller can emit plain text instead of a link.
+    /// </summary>
+    private static string? SafeUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+        if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri))
+            return null;
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            return null;
+        return uri.AbsoluteUri.Replace("(", "%28").Replace(")", "%29");
+    }
 
     /// <summary>Minimal HTML entity encoding for free text emitted into raw-HTML blocks.</summary>
     private static string Encode(string? value) =>
