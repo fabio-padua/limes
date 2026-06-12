@@ -354,6 +354,7 @@
     document.querySelectorAll(`.rate[data-q="${CSS.escape(id)}"]`).forEach((b) => {
       const sel = b.dataset.v === "na" ? a.na : (parseInt(b.dataset.v, 10) === a.score);
       b.classList.toggle("sel", sel);
+      b.setAttribute("aria-pressed", sel);
     });
     $("tally").textContent = `${answeredCount()} of ${questionTotal()} answered`;
   }
