@@ -68,6 +68,9 @@ jobs:
 
   deploy:
     needs: build-test
+    # Only ever roll the production-named resources from main. A manual workflow_dispatch
+    # on another branch still runs build-test, but never deploys.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,6 +81,12 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # The az containerapp commands live in an extension that isn't reliably preinstalled on
+      # GitHub-hosted runners; install/upgrade it explicitly so the deploy can't fail (or prompt)
+      # at the update step.
+      - name: Ensure containerapp CLI extension
+        run: az extension add --name containerapp --upgrade --only-show-errors
 
       # Build in ACR (ACR Tasks) so the runner needs no Docker daemon — mirrors the
       # remoteBuild: true used by azd. Build context is the repo root (see azure.yaml).
