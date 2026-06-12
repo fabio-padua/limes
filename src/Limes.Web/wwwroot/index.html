@@ -150,7 +150,7 @@
       <h2 id="stepTitle" style="margin:0">Partner profile</h2>
       <span class="step-label" id="stepLabel"></span>
     </div>
-    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-track" id="progressBar" role="progressbar" aria-label="Survey progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
 
     <div id="stepBody"></div>
 
@@ -299,7 +299,9 @@
     clearError();
     const N = Q.pillars.length;
     $("stepLabel").textContent = `Step ${step + 1} of ${totalSteps}`;
-    $("progressFill").style.width = `${(step / (totalSteps - 1)) * 100}%`;
+    const pct = Math.round((step / (totalSteps - 1)) * 100);
+    $("progressFill").style.width = `${pct}%`;
+    $("progressBar").setAttribute("aria-valuenow", pct);
     $("tally").textContent = `${answeredCount()} of ${questionTotal()} answered`;
     $("backBtn").style.visibility = step === 0 ? "hidden" : "visible";
     $("nextBtn").textContent = step === N + 1 ? "Run assessment" : "Next";
@@ -313,11 +315,11 @@
     $("stepTitle").textContent = "Partner profile";
     $("stepBody").innerHTML = `
       <p class="muted">Tell us who's being assessed. Only the name is required.</p>
-      <div class="field"><label>Partner name <span class="req">*</span></label>
+      <div class="field"><label for="pName">Partner name <span class="req">*</span></label>
         <input type="text" id="pName" value="${esc(partner.name)}" placeholder="e.g. Contoso Cloud Solutions"></div>
-      <div class="field"><label>Industry</label>
+      <div class="field"><label for="pIndustry">Industry</label>
         <input type="text" id="pIndustry" value="${esc(partner.industry)}" placeholder="e.g. Financial Services"></div>
-      <div class="field"><label>Region</label>
+      <div class="field"><label for="pRegion">Region</label>
         <input type="text" id="pRegion" value="${esc(partner.region)}" placeholder="e.g. Brazil"></div>`;
     $("pName").addEventListener("input", (e) => partner.name = e.target.value);
     $("pIndustry").addEventListener("input", (e) => partner.industry = e.target.value);
