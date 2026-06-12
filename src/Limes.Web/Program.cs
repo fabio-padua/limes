@@ -36,6 +36,10 @@ var cacheAbsoluteTtl = TimeSpan.FromHours(4);
 // Cap intake size so a single request can't force the server to buffer an unbounded body.
 const long maxIntakeBytes = 1 * 1024 * 1024; // 1 MB is generous for an intake JSON.
 
+// The Minerva grounding corpus is embedded and static, so load+parse it once and reuse the
+// instance across agents-mode requests rather than re-reading the assembly resource each time.
+var minervaKnowledge = new Lazy<MinervaKnowledgeSource?>(LoadMinervaKnowledge);
+
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 // Serve the bundled sample intake (embedded resource) so the UI's "Load sample" works everywhere.
@@ -89,12 +93,26 @@ app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, ILogg
     }
 
     // Mode selection: deterministic (default, $0, no Azure) or agents (Foundry-backed narrative).
-    // Agents mode requires Foundry env config; if it's absent we fail clearly rather than silently
-    // downgrading, so the caller knows narrative was not generated.
+    // Parse strictly — an unknown value (e.g. a "?mode=agent" typo) is a 400 rather than a silent
+    // downgrade to deterministic, matching the CLI's strict mode parsing.
     var requestedMode = request.Query["mode"].ToString();
-    var mode = string.Equals(requestedMode, "agents", StringComparison.OrdinalIgnoreCase)
-        ? AssessmentMode.Agents
-        : AssessmentMode.Deterministic;
+    AssessmentMode mode;
+    if (string.IsNullOrEmpty(requestedMode) ||
+        string.Equals(requestedMode, "deterministic", StringComparison.OrdinalIgnoreCase))
+    {
+        mode = AssessmentMode.Deterministic;
+    }
+    else if (string.Equals(requestedMode, "agents", StringComparison.OrdinalIgnoreCase))
+    {
+        mode = AssessmentMode.Agents;
+    }
+    else
+    {
+        return Results.BadRequest(new
+        {
+            error = $"Unknown mode '{requestedMode}'. Use 'deterministic' or 'agents'.",
+        });
+    }
 
     LimesPipeline pipeline;
     if (mode == AssessmentMode.Agents)
@@ -113,7 +131,7 @@ app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, ILogg
         }
 
         var factory = new FoundryAgentFactory(connection);
-        pipeline = LimesPipelineFactory.CreateAgents(factory, LoadMinervaKnowledge());
+        pipeline = LimesPipelineFactory.CreateAgents(factory, minervaKnowledge.Value);
     }
     else
     {
@@ -199,7 +217,11 @@ static MinervaKnowledgeSource? LoadMinervaKnowledge()
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return new MinervaKnowledgeSource(resourceName, reader.ReadToEnd());
     }
-    catch (Exception ex) when (ex is IOException or NotSupportedException)
+    catch (IOException)
+    {
+        return null;
+    }
+    catch (NotSupportedException)
     {
         return null;
     }

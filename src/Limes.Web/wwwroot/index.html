@@ -220,6 +220,9 @@
   document.addEventListener("DOMContentLoaded", init);
 
   async function init() {
+    // Nav is disabled until the questionnaire loads, so a fast click can't deref a null Q.
+    $("backBtn").disabled = true;
+    $("nextBtn").disabled = true;
     $("backBtn").addEventListener("click", () => go(-1));
     $("nextBtn").addEventListener("click", onNext);
     $("sampleBtn").addEventListener("click", loadSample);
@@ -251,6 +254,8 @@
     Q.pillars.forEach((p) => p.questions.forEach((q) =>
       answers[q.id] = { score: null, na: false, evidence: "", prompt: q.prompt }));
     totalSteps = Q.pillars.length + 2;
+    $("backBtn").disabled = false;
+    $("nextBtn").disabled = false;
     renderStep();
   }
 
@@ -258,12 +263,14 @@
   const answeredCount = () => Object.values(answers).filter((a) => a.score != null).length;
 
   function go(delta) {
+    if (!Q) return;
     const N = Q.pillars.length;
     step = Math.max(0, Math.min(N + 1, step + delta));
     renderStep();
   }
 
   function onNext() {
+    if (!Q) return;
     const N = Q.pillars.length;
     if (step === 0 && !partner.name.trim()) { showError("Partner name is required to continue."); return; }
     if (step === N + 1) { runSurvey(); return; }

@@ -161,15 +161,52 @@ public sealed class WebEndpointTests : IClassFixture<WebApplicationFactory<Progr
     [Fact]
     public async Task Assess_AgentsModeWithoutFoundry_ReturnsConflict()
     {
-        // The test host has no Foundry env config, so agents mode must fail clearly (409)
-        // rather than silently downgrading to deterministic.
+        // Clear any ambient Foundry config so the test is environment-independent: with no
+        // endpoint/deployment set, agents mode must fail clearly (409) rather than attempting
+        // a real Foundry call (or silently downgrading to deterministic).
+        var savedEndpoint = Environment.GetEnvironmentVariable("LIMES_FOUNDRY_ENDPOINT");
+        var savedDeployment = Environment.GetEnvironmentVariable("LIMES_FOUNDRY_DEPLOYMENT");
+        Environment.SetEnvironmentVariable("LIMES_FOUNDRY_ENDPOINT", null);
+        Environment.SetEnvironmentVariable("LIMES_FOUNDRY_DEPLOYMENT", null);
+        try
+        {
+            var client = _factory.CreateClient();
+            var res = await client.PostAsync("/api/assess?mode=agents",
+                new StringContent(SampleIntake, Encoding.UTF8, "application/json"));
+
+            Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+            Assert.False(string.IsNullOrEmpty(doc.RootElement.GetProperty("error").GetString()));
+            Assert.True(doc.RootElement.TryGetProperty("hint", out _));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LIMES_FOUNDRY_ENDPOINT", savedEndpoint);
+            Environment.SetEnvironmentVariable("LIMES_FOUNDRY_DEPLOYMENT", savedDeployment);
+        }
+    }
+
+    [Theory]
+    [InlineData("agent")]   // typo for "agents"
+    [InlineData("foo")]
+    public async Task Assess_UnknownMode_ReturnsBadRequest(string mode)
+    {
+        // An unknown mode is a 400, not a silent downgrade to deterministic.
         var client = _factory.CreateClient();
-        var res = await client.PostAsync("/api/assess?mode=agents",
+        var res = await client.PostAsync($"/api/assess?mode={mode}",
             new StringContent(SampleIntake, Encoding.UTF8, "application/json"));
 
-        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
-        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-        Assert.False(string.IsNullOrEmpty(doc.RootElement.GetProperty("error").GetString()));
-        Assert.True(doc.RootElement.TryGetProperty("hint", out _));
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Assess_ExplicitDeterministicMode_ReturnsScoredResult()
+    {
+        // The deterministic mode value is accepted explicitly (not just the empty default).
+        var client = _factory.CreateClient();
+        var res = await client.PostAsync("/api/assess?mode=deterministic",
+            new StringContent(SampleIntake, Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
     }
 }
