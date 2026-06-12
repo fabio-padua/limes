@@ -250,10 +250,20 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
           ]
         }
       ]
-      // Keep one warm replica for snappy demos; scale up under load.
+      // Keep one warm replica for snappy demos; scale out to 3 under HTTP load.
       scale: {
         minReplicas: 1
         maxReplicas: 3
+        rules: [
+          {
+            name: 'http-concurrency'
+            http: {
+              metadata: {
+                concurrentRequests: '50'
+              }
+            }
+          }
+        ]
       }
     }
   }
