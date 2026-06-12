@@ -11,9 +11,11 @@ COPY src/Limes.Agents/Limes.Agents.csproj src/Limes.Agents/
 COPY src/Limes.Web/Limes.Web.csproj src/Limes.Web/
 RUN dotnet restore src/Limes.Web/Limes.Web.csproj
 
-# Copy the rest and publish. samples/ is required: the sample intake is embedded as a resource.
+# Copy the rest and publish. samples/ and knowledge/ are required: the sample intake and
+# the Minerva grounding corpus are embedded as resources (see Limes.Web.csproj).
 COPY src/ src/
 COPY samples/ samples/
+COPY knowledge/ knowledge/
 RUN dotnet publish src/Limes.Web/Limes.Web.csproj -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
