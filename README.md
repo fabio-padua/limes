@@ -174,3 +174,7 @@ See [`docs/architecture-and-plan.md`](docs/architecture-and-plan.md) for the ful
 ## License
 
 MIT
+
+## Author
+
+**Fabio Padua** — Partner Solution Architect, Microsoft. This is part of my Track A signature work on Microsoft AI Solutions + App Innovation. Feedback, issues, and PRs welcome.
