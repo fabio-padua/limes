@@ -3,17 +3,19 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Limes — AI CoE Readiness Assessor</title>
+<meta name="color-scheme" content="dark" />
+<title>AI Center of Excellence Readiness</title>
 <style>
   :root {
-    --accent: #4F7A28;
-    --accent-2: #7AB317;
-    --accent-soft: #EDF3E3;
-    --ink: #1f2937;
-    --muted: #6b7280;
-    --line: #e5e7eb;
-    --bg: #f7f8f4;
-    --card: #ffffff;
+    --accent: #3b9eff;
+    --accent-2: #6fb8ff;
+    --accent-soft: #16243a;
+    --ink: #e4e9f1;
+    --muted: #8b94a7;
+    --line: #252b38;
+    --bg: #0b0e14;
+    --card: #131722;
+    --input: #0e121b;
     --crit: #b91c1c; --high: #d97706; --med: #ca8a04; --low: #4b8b3b;
   }
   * { box-sizing: border-box; }
@@ -22,11 +24,12 @@
     color: var(--ink); background: var(--bg); line-height: 1.5;
   }
   header {
-    background: var(--accent); color: #fff; padding: 18px 28px;
-    display: flex; align-items: baseline; gap: 14px;
+    background: var(--card); color: var(--ink); padding: 16px 28px;
+    display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line);
   }
-  header h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: .3px; }
-  header span { color: var(--accent-soft); font-size: 13px; }
+  header .logo { color: var(--accent); flex: 0 0 auto; display: flex; }
+  header .logo svg { width: 38px; height: 38px; display: block; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: .3px; color: var(--ink); }
   main { max-width: 1080px; margin: 0 auto; padding: 24px; }
   .card {
     background: var(--card); border: 1px solid var(--line); border-radius: 10px;
@@ -37,18 +40,19 @@
   textarea {
     width: 100%; min-height: 200px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
     font-size: 12.5px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; resize: vertical;
+    background: var(--input); color: var(--ink);
   }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
   button, .btn {
-    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    background: var(--accent); color: #0b0e14; border: 0; border-radius: 8px;
     padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none;
   }
-  button:hover, .btn:hover { background: #436621; }
-  button.secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
-  button.secondary:hover { background: var(--accent-soft); }
+  button:hover, .btn:hover { background: var(--accent-2); }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  button.secondary:hover { background: var(--accent-soft); color: var(--accent-2); }
   button:disabled { opacity: .5; cursor: not-allowed; }
   .muted { color: var(--muted); font-size: 12.5px; }
-  .err { color: var(--crit); font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
+  .err { color: #f87171; font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
   .hidden { display: none; }
 
   .index-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
@@ -66,7 +70,7 @@
   .bar-label { font-size: 13px; }
   .bar-val { font-size: 12.5px; text-align: right; color: var(--muted); }
   .gap-list { margin: 4px 0 0; padding-left: 18px; }
-  .gap-list li { font-size: 12.5px; color: #7a3b12; }
+  .gap-list li { font-size: 12.5px; color: #e0a35c; }
 
   table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -90,7 +94,7 @@
   .field { margin: 12px 0; }
   .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
   .field input[type=text] { width: 100%; max-width: 460px; font: inherit; font-size: 13px; padding: 9px 11px;
-    border: 1px solid var(--line); border-radius: 8px; }
+    border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); }
   .req { color: var(--crit); }
   .legend { font-size: 12px; color: var(--muted); margin: 2px 0 16px; }
   .legend b { color: var(--ink); font-weight: 600; }
@@ -98,15 +102,15 @@
   .q:last-child { border-bottom: 0; }
   .q-prompt { font-size: 13.5px; margin-bottom: 8px; }
   .rating { display: flex; gap: 6px; flex-wrap: wrap; }
-  .rating button { background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  .rating button { background: var(--input); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
     padding: 7px 11px; font-size: 12.5px; font-weight: 600; min-width: 38px; }
   .rating button:hover { border-color: var(--accent); background: var(--accent-soft); }
-  .rating button.sel { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .rating button.sel { background: var(--accent); color: #0b0e14; border-color: var(--accent); }
   .rating button.na { min-width: 44px; color: var(--muted); }
-  .rating button.na.sel { background: var(--muted); color: #fff; border-color: var(--muted); }
+  .rating button.na.sel { background: var(--muted); color: #0b0e14; border-color: var(--muted); }
   .note-toggle { background: none; border: 0; color: var(--accent); font-size: 12px; font-weight: 600; padding: 6px 0 0; cursor: pointer; }
   .note-input { margin-top: 8px; width: 100%; max-width: 560px; font: inherit; font-size: 12.5px; padding: 8px 10px;
-    border: 1px solid var(--line); border-radius: 8px; }
+    border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); }
   .step-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 18px; }
   .answered-tally { font-size: 12.5px; color: var(--muted); }
   .review-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px 18px; font-size: 13px; margin: 6px 0 4px; }
@@ -122,8 +126,22 @@
 </head>
 <body>
 <header>
-  <h1>Limes</h1>
-  <span>AI Center of Excellence Readiness Assessor — deterministic mode ($0 model cost)</span>
+  <span class="logo" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 4 L43 16 H5 Z" fill="currentColor"/>
+      <rect x="6" y="17.5" width="36" height="3.5" rx="1" fill="currentColor"/>
+      <g fill="currentColor" opacity="0.92">
+        <rect x="9"  y="22" width="4" height="15"/>
+        <rect x="16" y="22" width="4" height="15"/>
+        <rect x="23" y="22" width="4" height="15"/>
+        <rect x="30" y="22" width="4" height="15"/>
+        <rect x="37" y="22" width="4" height="15"/>
+      </g>
+      <rect x="6" y="37.5" width="36" height="3.5" rx="1" fill="currentColor"/>
+      <rect x="4" y="42" width="40" height="3" rx="1.5" fill="currentColor"/>
+    </svg>
+  </span>
+  <h1>AI Center of Excellence Readiness</h1>
 </header>
 
 <main>
@@ -317,8 +335,8 @@
   function questionHtml(q) {
     const a = answers[q.id];
     const nums = Q.levels.map((l) =>
-      `<button type="button" class="rate ${a.score === l.value ? "sel" : ""}" data-q="${esc(q.id)}" data-v="${l.value}" title="${esc(l.label)}">${l.value}</button>`).join("");
-    const na = `<button type="button" class="rate na ${a.na ? "sel" : ""}" data-q="${esc(q.id)}" data-v="na">N/A</button>`;
+      `<button type="button" class="rate ${a.score === l.value ? "sel" : ""}" data-q="${esc(q.id)}" data-v="${l.value}" title="${esc(l.label)}" aria-label="Level ${l.value}: ${esc(l.label)}" aria-pressed="${a.score === l.value}">${l.value}</button>`).join("");
+    const na = `<button type="button" class="rate na ${a.na ? "sel" : ""}" data-q="${esc(q.id)}" data-v="na" aria-label="Not applicable" aria-pressed="${a.na}">N/A</button>`;
     const hidden = a.evidence ? "" : "hidden";
     return `<div class="q">
       <div class="q-prompt">${esc(q.prompt)}</div>
