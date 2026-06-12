@@ -58,3 +58,31 @@ public sealed record RoadmapItemDto(
     IReadOnlyList<string> DependsOn, IReadOnlyList<string> Citations);
 public sealed record SkillingDto(string Pillar, string Gap, string LearnPath, string? Url, string? Role);
 public sealed record RiskDto(string Severity, string Pillar, string Title, string Description, string Mitigation);
+
+/// <summary>
+/// The canonical questionnaire served to the guided survey UI. Built from
+/// <see cref="Limes.Core.Intake.QuestionBank"/> so the survey, the file-drop intake, and the
+/// CLI all share one set of questions. <see cref="QuestionnairePillarDto.Pillar"/> carries the
+/// raw enum name the UI writes back into the assembled intake, while <c>DisplayName</c> is for
+/// headings; <see cref="Levels"/> supplies the 1-5 maturity labels for the rating controls.
+/// </summary>
+public sealed record QuestionnaireDto(
+    IReadOnlyList<QuestionnairePillarDto> Pillars,
+    IReadOnlyList<MaturityLevelDto> Levels)
+{
+    public static QuestionnaireDto Build() => new(
+        Limes.Core.Intake.QuestionBank.Pillars
+            .Select(p => new QuestionnairePillarDto(
+                p.Pillar.ToString(),
+                p.Pillar.DisplayName(),
+                p.Questions.Select(q => new QuestionDto(q.Id, q.Prompt)).ToList()))
+            .ToList(),
+        Enum.GetValues<MaturityLevel>()
+            .OrderBy(l => (int)l)
+            .Select(l => new MaturityLevelDto((int)l, l.DisplayName()))
+            .ToList());
+}
+
+public sealed record QuestionnairePillarDto(string Pillar, string DisplayName, IReadOnlyList<QuestionDto> Questions);
+public sealed record QuestionDto(string Id, string Prompt);
+public sealed record MaturityLevelDto(int Value, string Label);

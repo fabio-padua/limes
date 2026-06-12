@@ -3,17 +3,19 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Limes — AI CoE Readiness Assessor</title>
+<meta name="color-scheme" content="dark" />
+<title>AI Center of Excellence Readiness</title>
 <style>
   :root {
-    --accent: #4F7A28;
-    --accent-2: #7AB317;
-    --accent-soft: #EDF3E3;
-    --ink: #1f2937;
-    --muted: #6b7280;
-    --line: #e5e7eb;
-    --bg: #f7f8f4;
-    --card: #ffffff;
+    --accent: #3b9eff;
+    --accent-2: #6fb8ff;
+    --accent-soft: #16243a;
+    --ink: #e4e9f1;
+    --muted: #8b94a7;
+    --line: #252b38;
+    --bg: #0b0e14;
+    --card: #131722;
+    --input: #0e121b;
     --crit: #b91c1c; --high: #d97706; --med: #ca8a04; --low: #4b8b3b;
   }
   * { box-sizing: border-box; }
@@ -22,11 +24,12 @@
     color: var(--ink); background: var(--bg); line-height: 1.5;
   }
   header {
-    background: var(--accent); color: #fff; padding: 18px 28px;
-    display: flex; align-items: baseline; gap: 14px;
+    background: var(--card); color: var(--ink); padding: 16px 28px;
+    display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line);
   }
-  header h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: .3px; }
-  header span { color: var(--accent-soft); font-size: 13px; }
+  header .logo { color: var(--accent); flex: 0 0 auto; display: flex; }
+  header .logo svg { width: 38px; height: 38px; display: block; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: .3px; color: var(--ink); }
   main { max-width: 1080px; margin: 0 auto; padding: 24px; }
   .card {
     background: var(--card); border: 1px solid var(--line); border-radius: 10px;
@@ -37,18 +40,19 @@
   textarea {
     width: 100%; min-height: 200px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
     font-size: 12.5px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; resize: vertical;
+    background: var(--input); color: var(--ink);
   }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
   button, .btn {
-    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    background: var(--accent); color: #0b0e14; border: 0; border-radius: 8px;
     padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none;
   }
-  button:hover, .btn:hover { background: #436621; }
-  button.secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
-  button.secondary:hover { background: var(--accent-soft); }
+  button:hover, .btn:hover { background: var(--accent-2); }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  button.secondary:hover { background: var(--accent-soft); color: var(--accent-2); }
   button:disabled { opacity: .5; cursor: not-allowed; }
   .muted { color: var(--muted); font-size: 12.5px; }
-  .err { color: var(--crit); font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
+  .err { color: #f87171; font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
   .hidden { display: none; }
 
   .index-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
@@ -66,7 +70,7 @@
   .bar-label { font-size: 13px; }
   .bar-val { font-size: 12.5px; text-align: right; color: var(--muted); }
   .gap-list { margin: 4px 0 0; padding-left: 18px; }
-  .gap-list li { font-size: 12.5px; color: #7a3b12; }
+  .gap-list li { font-size: 12.5px; color: #e0a35c; }
 
   table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -81,27 +85,94 @@
   .spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid #fff; border-top-color: transparent;
     border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Guided survey */
+  .progress-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .progress-head .step-label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .progress-track { background: var(--accent-soft); border-radius: 999px; height: 8px; overflow: hidden; margin-bottom: 18px; }
+  .progress-fill { background: linear-gradient(90deg, var(--accent), var(--accent-2)); height: 100%; border-radius: 999px; transition: width .25s ease; }
+  .field { margin: 12px 0; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .field input[type=text] { width: 100%; max-width: 460px; font: inherit; font-size: 13px; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); }
+  .req { color: var(--crit); }
+  .legend { font-size: 12px; color: var(--muted); margin: 2px 0 16px; }
+  .legend b { color: var(--ink); font-weight: 600; }
+  .q { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .q:last-child { border-bottom: 0; }
+  .q-prompt { font-size: 13.5px; margin-bottom: 8px; }
+  .rating { display: flex; gap: 6px; flex-wrap: wrap; }
+  .rating button { background: var(--input); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 11px; font-size: 12.5px; font-weight: 600; min-width: 38px; }
+  .rating button:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .rating button.sel { background: var(--accent); color: #0b0e14; border-color: var(--accent); }
+  .rating button.na { min-width: 44px; color: var(--muted); }
+  .rating button.na.sel { background: var(--muted); color: #0b0e14; border-color: var(--muted); }
+  .note-toggle { background: none; border: 0; color: var(--accent); font-size: 12px; font-weight: 600; padding: 6px 0 0; cursor: pointer; }
+  .note-input { margin-top: 8px; width: 100%; max-width: 560px; font: inherit; font-size: 12.5px; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); }
+  .step-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 18px; }
+  .answered-tally { font-size: 12.5px; color: var(--muted); }
+  .review-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px 18px; font-size: 13px; margin: 6px 0 4px; }
+  .review-grid .rp { color: var(--muted); }
+  .mode-opts { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
+  .mode-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: 8px; cursor: pointer; }
+  .mode-opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .mode-opt input { margin-top: 3px; }
+  .mode-opt .mt { font-weight: 600; font-size: 13px; }
+  .mode-opt .md { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
 <header>
-  <h1>Limes</h1>
-  <span>AI Center of Excellence Readiness Assessor — deterministic mode ($0 model cost)</span>
+  <span class="logo" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 4 L43 16 H5 Z" fill="currentColor"/>
+      <rect x="6" y="17.5" width="36" height="3.5" rx="1" fill="currentColor"/>
+      <g fill="currentColor" opacity="0.92">
+        <rect x="9"  y="22" width="4" height="15"/>
+        <rect x="16" y="22" width="4" height="15"/>
+        <rect x="23" y="22" width="4" height="15"/>
+        <rect x="30" y="22" width="4" height="15"/>
+        <rect x="37" y="22" width="4" height="15"/>
+      </g>
+      <rect x="6" y="37.5" width="36" height="3.5" rx="1" fill="currentColor"/>
+      <rect x="4" y="42" width="40" height="3" rx="1.5" fill="currentColor"/>
+    </svg>
+  </span>
+  <h1>AI Center of Excellence Readiness</h1>
 </header>
 
 <main>
-  <section class="card">
-    <h2>1 · Intake</h2>
-    <p class="muted">Paste a partner intake JSON, upload a file, or load the bundled sample, then run the assessment.</p>
-    <textarea id="intake" spellcheck="false" aria-label="Intake JSON" placeholder="Paste intake JSON here…"></textarea>
-    <div class="row">
-      <button id="assessBtn">Run assessment</button>
-      <button class="secondary" id="sampleBtn">Load sample</button>
-      <button class="secondary" id="uploadBtn">Upload file…</button>
-      <input type="file" id="fileInput" accept="application/json,.json" class="hidden" />
-      <span id="status" class="muted" role="status" aria-live="polite"></span>
+  <section class="card" id="survey">
+    <div class="progress-head">
+      <h2 id="stepTitle" style="margin:0">Partner profile</h2>
+      <span class="step-label" id="stepLabel"></span>
+    </div>
+    <div class="progress-track" id="progressBar" role="progressbar" aria-label="Survey progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+    <div id="stepBody"></div>
+
+    <div class="step-nav">
+      <button class="secondary" id="backBtn">Back</button>
+      <span class="answered-tally" id="tally"></span>
+      <button id="nextBtn">Next</button>
     </div>
     <div id="error" class="err hidden"></div>
+
+    <details style="margin-top:18px">
+      <summary>Advanced — paste or upload intake JSON</summary>
+      <p class="muted" style="margin-top:10px">For power users: skip the survey and provide a raw intake JSON directly.</p>
+      <textarea id="intake" spellcheck="false" aria-label="Intake JSON" placeholder="Paste intake JSON here…"></textarea>
+      <div class="row">
+        <button id="assessJsonBtn">Run from JSON</button>
+        <button class="secondary" id="sampleBtn">Load sample</button>
+        <button class="secondary" id="uploadBtn">Upload file…</button>
+        <input type="file" id="fileInput" accept="application/json,.json" class="hidden" />
+        <span id="statusAdv" class="muted" role="status" aria-live="polite"></span>
+      </div>
+    </details>
   </section>
 
   <div id="results" class="hidden">
@@ -156,48 +227,234 @@
 
   let currentId = null;
 
-  $("sampleBtn").addEventListener("click", async () => {
+  // ---- Guided survey state ----
+  let Q = null;                                  // questionnaire from /api/questionnaire
+  const answers = {};                            // questionId -> { score:int|null, na:bool, evidence, prompt }
+  const partner = { name: "", industry: "", region: "" };
+  let selectedMode = "deterministic";
+  let step = 0;                                  // 0 = profile; 1..N = pillars; N+1 = review
+  let totalSteps = 2;
+
+  document.addEventListener("DOMContentLoaded", init);
+
+  async function init() {
+    // Nav is disabled until the questionnaire loads, so a fast click can't deref a null Q.
+    $("backBtn").disabled = true;
+    $("nextBtn").disabled = true;
+    $("backBtn").addEventListener("click", () => go(-1));
+    $("nextBtn").addEventListener("click", onNext);
+    $("sampleBtn").addEventListener("click", loadSample);
+    $("uploadBtn").addEventListener("click", () => $("fileInput").click());
+    $("fileInput").addEventListener("change", onUpload);
+    $("assessJsonBtn").addEventListener("click", runFromJson);
+
+    // Delegated handlers survive per-step re-renders.
+    $("stepBody").addEventListener("click", (e) => {
+      const rate = e.target.closest(".rate");
+      if (rate) { selectRate(rate.dataset.q, rate.dataset.v); return; }
+      const nt = e.target.closest(".note-toggle");
+      if (nt) {
+        const inp = $("note_" + nt.dataset.note);
+        inp.classList.toggle("hidden");
+        if (!inp.classList.contains("hidden")) inp.focus();
+      }
+    });
+    $("stepBody").addEventListener("input", (e) => {
+      if (e.target.classList.contains("note-input")) answers[e.target.dataset.q].evidence = e.target.value;
+    });
+
     try {
-      const res = await fetch("api/sample");
-      if (!res.ok) throw new Error("sample not available");
-      $("intake").value = JSON.stringify(await res.json(), null, 2);
-      setStatus("Sample loaded.");
-    } catch { showError("Could not load the bundled sample."); }
-  });
+      const res = await fetch("api/questionnaire");
+      if (!res.ok) throw new Error("questionnaire unavailable");
+      Q = await res.json();
+    } catch { showError("Could not load the questionnaire. Try refreshing the page."); return; }
 
-  $("uploadBtn").addEventListener("click", () => $("fileInput").click());
-  $("fileInput").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => { $("intake").value = reader.result; setStatus(`Loaded ${esc(file.name)}.`); };
-    reader.readAsText(file);
-  });
+    Q.pillars.forEach((p) => p.questions.forEach((q) =>
+      answers[q.id] = { score: null, na: false, evidence: "", prompt: q.prompt }));
+    totalSteps = Q.pillars.length + 2;
+    $("backBtn").disabled = false;
+    $("nextBtn").disabled = false;
+    renderStep();
+  }
 
-  $("assessBtn").addEventListener("click", runAssessment);
+  const questionTotal = () => Q ? Q.pillars.reduce((n, p) => n + p.questions.length, 0) : 0;
+  const answeredCount = () => Object.values(answers).filter((a) => a.score != null).length;
 
-  async function runAssessment() {
-    const body = $("intake").value.trim();
-    if (!body) { showError("Provide intake JSON first (paste, upload, or load the sample)."); return; }
+  function go(delta) {
+    if (!Q) return;
+    const N = Q.pillars.length;
+    step = Math.max(0, Math.min(N + 1, step + delta));
+    renderStep();
+  }
+
+  function onNext() {
+    if (!Q) return;
+    const N = Q.pillars.length;
+    if (step === 0 && !partner.name.trim()) { showError("Partner name is required to continue."); return; }
+    if (step === N + 1) { runSurvey(); return; }
+    go(1);
+  }
+
+  function renderStep() {
     clearError();
-    const btn = $("assessBtn");
-    btn.disabled = true;
-    setStatus('<span class="spinner"></span> Running pipeline…');
+    const N = Q.pillars.length;
+    $("stepLabel").textContent = `Step ${step + 1} of ${totalSteps}`;
+    const pct = Math.round((step / (totalSteps - 1)) * 100);
+    $("progressFill").style.width = `${pct}%`;
+    $("progressBar").setAttribute("aria-valuenow", pct);
+    $("tally").textContent = `${answeredCount()} of ${questionTotal()} answered`;
+    $("backBtn").style.visibility = step === 0 ? "hidden" : "visible";
+    $("nextBtn").textContent = step === N + 1 ? "Run assessment" : "Next";
+
+    if (step === 0) renderProfile();
+    else if (step <= N) renderPillar(step - 1);
+    else renderReview();
+  }
+
+  function renderProfile() {
+    $("stepTitle").textContent = "Partner profile";
+    $("stepBody").innerHTML = `
+      <p class="muted">Tell us who's being assessed. Only the name is required.</p>
+      <div class="field"><label for="pName">Partner name <span class="req">*</span></label>
+        <input type="text" id="pName" value="${esc(partner.name)}" placeholder="e.g. Contoso Cloud Solutions"></div>
+      <div class="field"><label for="pIndustry">Industry</label>
+        <input type="text" id="pIndustry" value="${esc(partner.industry)}" placeholder="e.g. Financial Services"></div>
+      <div class="field"><label for="pRegion">Region</label>
+        <input type="text" id="pRegion" value="${esc(partner.region)}" placeholder="e.g. Brazil"></div>`;
+    $("pName").addEventListener("input", (e) => partner.name = e.target.value);
+    $("pIndustry").addEventListener("input", (e) => partner.industry = e.target.value);
+    $("pRegion").addEventListener("input", (e) => partner.region = e.target.value);
+  }
+
+  function renderPillar(i) {
+    const p = Q.pillars[i];
+    $("stepTitle").textContent = p.displayName;
+    const legend = Q.levels.map((l) => `<b>${l.value}</b> ${esc(l.label)}`).join(" · ");
+    const body = p.questions.map((q) => questionHtml(q)).join("");
+    $("stepBody").innerHTML = `<div class="legend">Rate each statement — ${legend} — or mark N/A.</div>${body}`;
+  }
+
+  function questionHtml(q) {
+    const a = answers[q.id];
+    const nums = Q.levels.map((l) =>
+      `<button type="button" class="rate ${a.score === l.value ? "sel" : ""}" data-q="${esc(q.id)}" data-v="${l.value}" title="${esc(l.label)}" aria-label="Level ${l.value}: ${esc(l.label)}" aria-pressed="${a.score === l.value}">${l.value}</button>`).join("");
+    const na = `<button type="button" class="rate na ${a.na ? "sel" : ""}" data-q="${esc(q.id)}" data-v="na" aria-label="Not applicable" aria-pressed="${a.na}">N/A</button>`;
+    const hidden = a.evidence ? "" : "hidden";
+    return `<div class="q">
+      <div class="q-prompt">${esc(q.prompt)}</div>
+      <div class="rating">${nums}${na}</div>
+      <button type="button" class="note-toggle" data-note="${esc(q.id)}">${a.evidence ? "Edit note" : "+ Add note"}</button>
+      <input type="text" class="note-input ${hidden}" id="note_${esc(q.id)}" data-q="${esc(q.id)}"
+             placeholder="Optional evidence / comment" value="${esc(a.evidence)}">
+    </div>`;
+  }
+
+  function selectRate(id, v) {
+    const a = answers[id];
+    if (v === "na") { a.score = null; a.na = true; }
+    else { a.score = parseInt(v, 10); a.na = false; }
+    document.querySelectorAll(`.rate[data-q="${CSS.escape(id)}"]`).forEach((b) => {
+      const sel = b.dataset.v === "na" ? a.na : (parseInt(b.dataset.v, 10) === a.score);
+      b.classList.toggle("sel", sel);
+      b.setAttribute("aria-pressed", sel);
+    });
+    $("tally").textContent = `${answeredCount()} of ${questionTotal()} answered`;
+  }
+
+  function renderReview() {
+    $("stepTitle").textContent = "Review & run";
+    const rows = Q.pillars.map((p) => {
+      const tot = p.questions.length;
+      const ans = p.questions.filter((q) => answers[q.id].score != null).length;
+      return `<div>${esc(p.displayName)}</div><div class="rp">${ans}/${tot} answered</div>`;
+    }).join("");
+    const opt = (val, title, desc) =>
+      `<label class="mode-opt ${selectedMode === val ? "sel" : ""}">
+        <input type="radio" name="mode" value="${val}" ${selectedMode === val ? "checked" : ""}>
+        <span><span class="mt">${title}</span><span class="md">${desc}</span></span></label>`;
+    $("stepBody").innerHTML = `
+      <p class="muted">${answeredCount()} of ${questionTotal()} questions answered. Unanswered items are treated as N/A.</p>
+      <div class="review-grid">
+        <div><strong>Partner</strong></div><div class="rp">${esc(partner.name || "—")}${partner.industry ? " · " + esc(partner.industry) : ""}${partner.region ? " · " + esc(partner.region) : ""}</div>
+        ${rows}
+      </div>
+      <h3>Assessment mode</h3>
+      <div class="mode-opts" id="modeOpts">
+        ${opt("deterministic", "Deterministic — $0 model cost", "Pure rules engine. Instant, no Azure calls. Recommended for demos &amp; CI.")}
+        ${opt("agents", "Agents — Foundry narrative", "Adds AI-written narrative grounded in the Minerva corpus. Costs a few cents and requires Foundry configured on the server.")}
+      </div>
+      <span id="runStatus" class="muted" role="status" aria-live="polite"></span>`;
+    $("modeOpts").addEventListener("change", (e) => { selectedMode = e.target.value; renderReview(); });
+  }
+
+  function buildIntake() {
+    const partnerObj = { name: partner.name.trim() };
+    if (partner.industry.trim()) partnerObj.industry = partner.industry.trim();
+    if (partner.region.trim()) partnerObj.region = partner.region.trim();
+    const pillars = Q.pillars.map((p) => ({
+      pillar: p.pillar,
+      responses: p.questions
+        .filter((q) => answers[q.id].score != null)
+        .map((q) => {
+          const a = answers[q.id];
+          const r = { questionId: q.id, prompt: q.prompt, score: a.score };
+          if (a.evidence && a.evidence.trim()) r.evidence = a.evidence.trim();
+          return r;
+        }),
+    }));
+    return { partner: partnerObj, pillars };
+  }
+
+  function runSurvey() { runWithBody(JSON.stringify(buildIntake()), selectedMode, $("runStatus")); }
+
+  function runFromJson() {
+    const body = $("intake").value.trim();
+    if (!body) { showError("Paste or load intake JSON first."); return; }
+    runWithBody(body, selectedMode, $("statusAdv"));
+  }
+
+  async function runWithBody(body, mode, statusEl) {
+    clearError();
+    const setS = (html) => { if (statusEl) statusEl.innerHTML = html; };
+    setS('<span class="spinner"></span> Running pipeline…');
+    $("nextBtn").disabled = true; $("assessJsonBtn").disabled = true;
     try {
-      const res = await fetch("api/assess", {
+      const res = await fetch("api/assess" + (mode === "agents" ? "?mode=agents" : ""), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
       });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || `Request failed (${res.status}).`); return; }
+      if (!res.ok) {
+        showError([data.error, data.detail, data.hint].filter(Boolean).join("\n") || `Request failed (${res.status}).`);
+        setS("");
+        return;
+      }
       render(data);
-      setStatus("Assessment complete.");
+      setS("Assessment complete.");
     } catch (err) {
       showError("Network error: " + err.message);
+      setS("");
     } finally {
-      btn.disabled = false;
+      $("nextBtn").disabled = false; $("assessJsonBtn").disabled = false;
     }
+  }
+
+  async function loadSample() {
+    try {
+      const res = await fetch("api/sample");
+      if (!res.ok) throw new Error("sample not available");
+      $("intake").value = JSON.stringify(await res.json(), null, 2);
+      $("statusAdv").textContent = "Sample loaded.";
+    } catch { showError("Could not load the bundled sample."); }
+  }
+
+  function onUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { $("intake").value = reader.result; $("statusAdv").textContent = `Loaded ${file.name}.`; };
+    reader.readAsText(file);
   }
 
   function render(d) {
@@ -286,8 +543,7 @@
   }
 
   const empty = (msg) => `<p class="muted"><em>${esc(msg)}</em></p>`;
-  function setStatus(html) { $("status").innerHTML = html; }
-  function showError(msg) { const e = $("error"); e.textContent = msg; e.classList.remove("hidden"); setStatus(""); }
+  function showError(msg) { const e = $("error"); e.textContent = msg; e.classList.remove("hidden"); }
   function clearError() { $("error").classList.add("hidden"); $("error").textContent = ""; }
 </script>
 </body>
