@@ -127,4 +127,49 @@ public sealed class WebEndpointTests : IClassFixture<WebApplicationFactory<Progr
         var res = await client.GetAsync("/api/assessments/does-not-exist/download/docx");
         Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
     }
+
+    [Fact]
+    public async Task Questionnaire_ReturnsSevenPillarsAndLevels()
+    {
+        var client = _factory.CreateClient();
+        var res = await client.GetAsync("/api/questionnaire");
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        var root = doc.RootElement;
+
+        var pillars = root.GetProperty("pillars");
+        Assert.Equal(7, pillars.GetArrayLength());
+        // The five maturity levels (Initial..Optimized) are the 1-5 rating labels.
+        Assert.Equal(5, root.GetProperty("levels").GetArrayLength());
+
+        foreach (var pillar in pillars.EnumerateArray())
+        {
+            // Raw enum name (for intake assembly) and a friendly heading must both be present.
+            Assert.False(string.IsNullOrEmpty(pillar.GetProperty("pillar").GetString()));
+            Assert.False(string.IsNullOrEmpty(pillar.GetProperty("displayName").GetString()));
+            var questions = pillar.GetProperty("questions");
+            Assert.True(questions.GetArrayLength() > 0);
+            foreach (var q in questions.EnumerateArray())
+            {
+                Assert.False(string.IsNullOrEmpty(q.GetProperty("id").GetString()));
+                Assert.False(string.IsNullOrEmpty(q.GetProperty("prompt").GetString()));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Assess_AgentsModeWithoutFoundry_ReturnsConflict()
+    {
+        // The test host has no Foundry env config, so agents mode must fail clearly (409)
+        // rather than silently downgrading to deterministic.
+        var client = _factory.CreateClient();
+        var res = await client.PostAsync("/api/assess?mode=agents",
+            new StringContent(SampleIntake, Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        Assert.False(string.IsNullOrEmpty(doc.RootElement.GetProperty("error").GetString()));
+        Assert.True(doc.RootElement.TryGetProperty("hint", out _));
+    }
 }

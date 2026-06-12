@@ -12,9 +12,12 @@
   </ItemGroup>
 
   <!-- Single source of truth: embed the repo sample intake so the UI can load it
-       via /api/sample regardless of content root (dotnet run, publish, or tests). -->
+       via /api/sample regardless of content root (dotnet run, publish, or tests).
+       The Minerva grounding corpus is embedded the same way so agents mode is grounded
+       in the deployed container without shipping a separate file. -->
   <ItemGroup>
     <EmbeddedResource Include="..\..\samples\sample-intake.json" Link="sample-intake.json" LogicalName="Limes.Web.sample-intake.json" />
+    <EmbeddedResource Include="..\..\knowledge\ai-coe-knowledge.md" Link="ai-coe-knowledge.md" LogicalName="Limes.Web.ai-coe-knowledge.md" />
   </ItemGroup>
 
 </Project>

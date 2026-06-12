@@ -2,6 +2,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Limes.Agents;
+using Limes.Agents.Knowledge;
+using Limes.Agents.Maf;
+using Limes.Agents.Pipeline;
 using Limes.Core.Domain;
 using Limes.Core.Intake;
 using Limes.Core.Reporting;
@@ -45,6 +48,10 @@ app.MapGet("/api/sample", async () =>
     return Results.Text(await reader.ReadToEndAsync(), "application/json", Encoding.UTF8);
 });
 
+// Serve the canonical questionnaire (from Limes.Core.QuestionBank) so the guided survey UI can
+// render the questions without embedding domain knowledge in the front end.
+app.MapGet("/api/questionnaire", () => Results.Json(QuestionnaireDto.Build(), jsonOptions));
+
 // Run the deterministic pipeline over a posted intake ($0 model cost, no Azure) and cache the
 // deliverable so the report artifacts can be downloaded by id.
 app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, ILogger<Program> logger, CancellationToken ct) =>
@@ -81,11 +88,42 @@ app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, ILogg
         return Results.BadRequest(new { error = $"Invalid intake JSON: {ex.Message}" });
     }
 
+    // Mode selection: deterministic (default, $0, no Azure) or agents (Foundry-backed narrative).
+    // Agents mode requires Foundry env config; if it's absent we fail clearly rather than silently
+    // downgrading, so the caller knows narrative was not generated.
+    var requestedMode = request.Query["mode"].ToString();
+    var mode = string.Equals(requestedMode, "agents", StringComparison.OrdinalIgnoreCase)
+        ? AssessmentMode.Agents
+        : AssessmentMode.Deterministic;
+
+    LimesPipeline pipeline;
+    if (mode == AssessmentMode.Agents)
+    {
+        var connection = FoundryConnection.FromEnvironment(out var reason);
+        if (connection is null)
+        {
+            return Results.Json(
+                new
+                {
+                    error = "Agents mode is not configured on this server.",
+                    detail = reason,
+                    hint = $"Set {FoundryConnection.EndpointEnvVar} and {FoundryConnection.DeploymentEnvVar}, or run in deterministic mode.",
+                },
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        var factory = new FoundryAgentFactory(connection);
+        pipeline = LimesPipelineFactory.CreateAgents(factory, LoadMinervaKnowledge());
+    }
+    else
+    {
+        pipeline = LimesPipelineFactory.CreateDeterministic();
+    }
+
     AssessmentDeliverable deliverable;
     try
     {
-        var pipeline = LimesPipelineFactory.CreateDeterministic();
-        deliverable = await pipeline.RunAsync(intake, AssessmentMode.Deterministic, ct);
+        deliverable = await pipeline.RunAsync(intake, mode, ct);
     }
     catch (Exception ex) when (ex is not OperationCanceledException)
     {
@@ -146,6 +184,25 @@ static string Slug(string name)
     if (slug.Length > 60)
         slug = slug[..60];
     return string.IsNullOrEmpty(slug) ? "partner" : slug;
+}
+
+// Loads the embedded Minerva grounding corpus for agents mode. Returns null (ungrounded) if the
+// resource is missing or unreadable, so agents mode still runs rather than failing on grounding.
+static MinervaKnowledgeSource? LoadMinervaKnowledge()
+{
+    const string resourceName = "Limes.Web.ai-coe-knowledge.md";
+    try
+    {
+        using var stream = typeof(Program).Assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+            return null;
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        return new MinervaKnowledgeSource(resourceName, reader.ReadToEnd());
+    }
+    catch (Exception ex) when (ex is IOException or NotSupportedException)
+    {
+        return null;
+    }
 }
 
 // Reads the request body into a string, throwing InvalidDataException once the byte count
