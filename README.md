@@ -116,12 +116,12 @@ Limes is deliberately cheap to run per partner. The cost depends entirely on the
 | **Deterministic** *(default)* | 0 | **$0** — no API calls at all |
 | **Agents** | 5 | a few **US cents** (see below) |
 
-**Deterministic mode is exactly $0.** It is a pure C# rules engine — no model is ever called, so demos, CI, dry runs, and the entire `Limes.Web` UI cost nothing beyond compute you already pay for.
+**Deterministic mode is exactly $0 in model cost.** It is a pure C# rules engine — no model is ever called, so demos, CI, dry runs, and the entire `Limes.Web` UI add no API charges on top of the compute you already pay for (see [Fixed infrastructure](#fixed-infrastructure-not-per-assessment) for the standing baseline).
 
 **Agents mode** adds Foundry model calls *on top of* the deterministic result. The numbers (computed by `Iustitia`) are never sent to the model to decide — the model only writes **narrative**, so token usage is small and bounded regardless of partner size:
 
 - The pipeline makes **5 model calls per partner** — one each for `Iustitia`, `Providentia`, `Egeria`, `Terminus`, and `Fama`. (`Janus` normalizes deterministically and makes no model call.)
-- Each call sends a short system persona, a compact **structured** prompt (pillar scores / action titles / risk titles — never raw intake), and the Minerva grounding corpus (`knowledge/ai-coe-knowledge.md`, ≈2 KB ≈ ~500 tokens; hard-capped at 8,000 chars per prompt).
+- Each call sends a short system persona, a compact **structured** prompt (pillar scores / action titles / risk titles — never raw intake), and the Minerva grounding corpus (`knowledge/ai-coe-knowledge.md`, ~2 KB / ~500 tokens; hard-capped at 8,000 chars per prompt).
 - That works out to roughly **5–8K input tokens + ~2–3K output tokens per partner** in total across all five calls.
 
 At those volumes the per-partner cost is **pennies**. Even at a deliberately high illustrative rate of **$10 / 1M input** and **$30 / 1M output** tokens, a single assessment lands **well under $0.20** — and typical GlobalStandard rates put it lower still. Check the [Azure OpenAI pricing page](https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/) for the current `gpt-5.2` GlobalStandard rate to get an exact figure for your tenant.
@@ -137,7 +137,7 @@ Separate from the per-partner cost above, the deployed environment has a small s
 
 ### Keeping costs down
 
-- Use **deterministic mode** (the default) for demos, CI, and the web UI — it is always $0.
+- Use **deterministic mode** (the default) for demos, CI, and the web UI — it is always $0 in model cost.
 - Lower the model deployment capacity if you don't need throughput: `azd env set chatModelCapacity 10` (10K TPM).
 - Scale the web app to zero when it's not being demoed (see `minReplicas` above).
 - Use the Azure Pricing Calculator / Cost Management to set a budget alert on `rg-<env>`.
