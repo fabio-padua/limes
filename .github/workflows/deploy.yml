@@ -1,0 +1,127 @@
+# Continuous deployment: build both container images in ACR and roll the running
+# Container App (web) + Container Apps Job (orchestrator). Runs after merge to main.
+#
+# ── One-time setup (no secrets are stored long-lived; auth is OIDC) ──────────────
+# 1. Create an app registration (or user-assigned identity) and a federated credential
+#    trusting this repo's main branch:
+#      az ad app create --display-name limes-github-deploy
+#      # capture appId (AZURE_CLIENT_ID) and the app's objectId
+#      az ad app federated-credential create --id <appId> --parameters '{
+#        "name": "limes-main",
+#        "issuer": "https://token.actions.githubusercontent.com",
+#        "subject": "repo:fabio-padua/limes:ref:refs/heads/main",
+#        "audiences": ["api://AzureADTokenExchange"]
+#      }'
+#      az ad sp create --id <appId>   # service principal for the app
+# 2. Grant the identity rights on the target resources:
+#      az role assignment create --assignee <appId> --role AcrPush \
+#        --scope $(az acr show -n acrcxedvvajryqza --query id -o tsv)
+#      az role assignment create --assignee <appId> --role "Contributor" \
+#        --scope $(az group show -n rg-limes-prod --query id -o tsv)
+#    (Container Apps has no built-in "just update image" role; Contributor on the RG
+#     is the simplest. Scope it to the apps if you prefer least privilege.)
+# 3. Add repo secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
+#    Resource names below default to the limes-prod environment; override them with repo
+#    variables (Settings → Secrets and variables → Actions → Variables) if they change.
+
+name: deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'samples/**'
+      - 'knowledge/**'
+      - '**/Dockerfile'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+# OIDC needs id-token; contents:read for checkout.
+permissions:
+  id-token: write
+  contents: read
+
+# Never let two deploys race for the same Container App revision.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-limes-prod' }}
+  ACR_NAME: ${{ vars.ACR_NAME || 'acrcxedvvajryqza' }}
+  WEB_APP_NAME: ${{ vars.WEB_APP_NAME || 'ca-web-cxedvvajryqza' }}
+  ORCHESTRATOR_JOB_NAME: ${{ vars.ORCHESTRATOR_JOB_NAME || 'job-cxedvvajryqza' }}
+
+jobs:
+  # Gate the deploy on a clean build + tests so we never ship a broken image.
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet restore Limes.sln
+      - run: dotnet build Limes.sln --configuration Release --no-restore
+      - run: dotnet test Limes.sln --configuration Release --no-build --verbosity normal
+
+  deploy:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Build in ACR (ACR Tasks) so the runner needs no Docker daemon — mirrors the
+      # remoteBuild: true used by azd. Build context is the repo root (see azure.yaml).
+      - name: Build web image in ACR
+        run: |
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "limes-web:${{ github.sha }}" \
+            --image "limes-web:latest" \
+            --file src/Limes.Web/Dockerfile \
+            .
+
+      - name: Build orchestrator image in ACR
+        run: |
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "limes-orchestrator:${{ github.sha }}" \
+            --image "limes-orchestrator:latest" \
+            --file src/Limes.Orchestrator/Dockerfile \
+            .
+
+      # Repoint each resource at the freshly built, SHA-tagged image. The app/job
+      # managed identities already hold AcrPull, so the pull succeeds.
+      - name: Update web Container App
+        run: |
+          az containerapp update \
+            --name "$WEB_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$ACR_NAME.azurecr.io/limes-web:${{ github.sha }}"
+
+      - name: Update orchestrator Container Apps Job
+        run: |
+          az containerapp job update \
+            --name "$ORCHESTRATOR_JOB_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$ACR_NAME.azurecr.io/limes-orchestrator:${{ github.sha }}"
+
+      - name: Deployment summary
+        run: |
+          {
+            echo "### Limes deploy"
+            echo ""
+            echo "| Resource | Image |"
+            echo "| --- | --- |"
+            echo "| ${WEB_APP_NAME} | limes-web:${{ github.sha }} |"
+            echo "| ${ORCHESTRATOR_JOB_NAME} | limes-orchestrator:${{ github.sha }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
