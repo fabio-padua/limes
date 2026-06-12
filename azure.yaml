@@ -14,6 +14,9 @@ services:
     docker:
       path: ./Dockerfile
       context: ../..
+      # Build the image in ACR (ACR Tasks) instead of the local Docker daemon, so
+      # `azd up`/`azd deploy` work from Azure Cloud Shell or any host without Docker.
+      remoteBuild: true
   web:
     project: ./src/Limes.Web
     language: dotnet
@@ -21,3 +24,6 @@ services:
     docker:
       path: ./Dockerfile
       context: ../..
+      # Build the image in ACR (ACR Tasks) instead of the local Docker daemon, so
+      # `azd up`/`azd deploy` work from Azure Cloud Shell or any host without Docker.
+      remoteBuild: true
