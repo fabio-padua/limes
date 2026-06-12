@@ -109,7 +109,7 @@ The job name and storage account are emitted as `azd` outputs (`LIMES_JOB_NAME`,
 
 ## Cost per assessment
 
-Limes is deliberately cheap to run per partner. The cost depends entirely on the run mode:
+Limes is deliberately cheap to run. Each assessment corresponds to a single partner run (1:1), so "per assessment" and "per partner" mean the same thing throughout this section. The cost depends entirely on the run mode:
 
 | Mode | Model calls per partner | Model cost per partner |
 | --- | --- | --- |
