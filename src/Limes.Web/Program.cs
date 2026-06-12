@@ -117,14 +117,27 @@ app.MapPost("/api/assess", async (HttpRequest request, IMemoryCache cache, ILogg
     LimesPipeline pipeline;
     if (mode == AssessmentMode.Agents)
     {
-        var connection = FoundryConnection.FromEnvironment(out var reason);
+        var connection = FoundryConnection.FromEnvironment(out var reason, out var problem);
         if (connection is null)
         {
+            // The EndpointInvalid reasons embed the raw endpoint value; don't leak it to the caller.
+            // Log it server-side for diagnosis and return a generic detail instead.
+            string? detail;
+            if (problem == FoundryConnection.FoundryConfigProblem.EndpointInvalid)
+            {
+                logger.LogWarning("Agents mode misconfigured: {Reason}", reason);
+                detail = $"{FoundryConnection.EndpointEnvVar} is set but invalid.";
+            }
+            else
+            {
+                detail = reason;
+            }
+
             return Results.Json(
                 new
                 {
                     error = "Agents mode is not configured on this server.",
-                    detail = reason,
+                    detail,
                     hint = $"Set {FoundryConnection.EndpointEnvVar} and {FoundryConnection.DeploymentEnvVar}, or run in deterministic mode.",
                 },
                 statusCode: StatusCodes.Status409Conflict);

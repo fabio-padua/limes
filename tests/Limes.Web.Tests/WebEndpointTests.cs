@@ -186,6 +186,36 @@ public sealed class WebEndpointTests : IClassFixture<WebApplicationFactory<Progr
         }
     }
 
+    [Fact]
+    public async Task Assess_AgentsModeWithInvalidEndpoint_DoesNotLeakConfiguredValue()
+    {
+        // An invalid (non-HTTPS) endpoint must not be echoed back to the caller: the 409 detail
+        // should be generic so server configuration isn't leaked. The raw value is logged server-side.
+        const string secretHost = "internal-foundry-host.contoso.local";
+        var savedEndpoint = Environment.GetEnvironmentVariable("LIMES_FOUNDRY_ENDPOINT");
+        var savedDeployment = Environment.GetEnvironmentVariable("LIMES_FOUNDRY_DEPLOYMENT");
+        Environment.SetEnvironmentVariable("LIMES_FOUNDRY_ENDPOINT", $"http://{secretHost}/openai");
+        Environment.SetEnvironmentVariable("LIMES_FOUNDRY_DEPLOYMENT", "gpt-4.1");
+        try
+        {
+            var client = _factory.CreateClient();
+            var res = await client.PostAsync("/api/assess?mode=agents",
+                new StringContent(SampleIntake, Encoding.UTF8, "application/json"));
+
+            Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+            var payload = await res.Content.ReadAsStringAsync();
+            Assert.DoesNotContain(secretHost, payload);
+            using var doc = JsonDocument.Parse(payload);
+            Assert.Equal("LIMES_FOUNDRY_ENDPOINT is set but invalid.",
+                doc.RootElement.GetProperty("detail").GetString());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LIMES_FOUNDRY_ENDPOINT", savedEndpoint);
+            Environment.SetEnvironmentVariable("LIMES_FOUNDRY_DEPLOYMENT", savedDeployment);
+        }
+    }
+
     [Theory]
     [InlineData("agent")]   // typo for "agents"
     [InlineData("foo")]
