@@ -30,6 +30,9 @@ param principalId string = ''
 @description('Container image for the orchestrator job. Left empty on first provision; azd sets it on deploy.')
 param orchestratorImage string = ''
 
+@description('Container image for the Limes.Web app. Leave empty on first provision (a placeholder image is used); azd deploy builds and pushes the real image and updates the Container App separately.')
+param webImage string = ''
+
 var tags = { 'azd-env-name': environmentName }
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 
@@ -53,6 +56,7 @@ module resources 'resources.bicep' = {
     chatModelCapacity: int(chatModelCapacity)
     principalId: principalId
     orchestratorImage: orchestratorImage
+    webImage: webImage
   }
 }
 
@@ -68,3 +72,4 @@ output LIMES_FOUNDRY_DEPLOYMENT string = resources.outputs.chatDeploymentName
 output LIMES_INTAKE_CONTAINER_URL string = resources.outputs.intakeContainerUrl
 output LIMES_REPORTS_CONTAINER_URL string = resources.outputs.reportsContainerUrl
 output LIMES_JOB_NAME string = resources.outputs.jobName
+output LIMES_WEB_URL string = resources.outputs.webUrl

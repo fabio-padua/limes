@@ -21,6 +21,9 @@ param principalId string
 @description('Orchestrator container image. Empty uses a placeholder until azd deploys the real one.')
 param orchestratorImage string
 
+@description('Web (Limes.Web) container image. When empty, a placeholder image is used; azd deploy later builds, pushes, and updates the Container App with the real image.')
+param webImage string
+
 // Built-in role definition IDs.
 var openAiUserRoleId = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd' // Cognitive Services OpenAI User
 var blobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe' // Storage Blob Data Contributor
@@ -28,6 +31,11 @@ var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull
 
 var placeholderImage = 'mcr.microsoft.com/k8se/quickstart-jobs:latest'
 var jobImage = empty(orchestratorImage) ? placeholderImage : orchestratorImage
+// Both the placeholder (MCR quickstart) and the real Limes.Web image listen on 80
+// (the Dockerfile sets ASPNETCORE_HTTP_PORTS=80), matching ingress targetPort: 80, so the
+// first-provision revision is healthy before azd deploys the real image.
+var webPlaceholderImage = 'mcr.microsoft.com/k8se/quickstart:latest'
+var webImageResolved = empty(webImage) ? webPlaceholderImage : webImage
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: 'log-${resourceToken}'
@@ -195,6 +203,85 @@ resource job 'Microsoft.App/jobs@2024-03-01' = {
   }
 }
 
+// --- Limes.Web: long-lived Container App (browser UI + API) ---
+
+resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
+  name: 'ca-web-${resourceToken}'
+  location: location
+  // azd matches this tag to build/push the image and update the app on deploy.
+  tags: union(tags, { 'azd-service-name': 'web' })
+  // Dedicated system-assigned identity with ONLY AcrPull (granted below) — the public web
+  // app must not inherit the orchestrator identity's OpenAI/Blob data-plane roles.
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    managedEnvironmentId: caeEnv.id
+    configuration: {
+      activeRevisionsMode: 'Single'
+      ingress: {
+        external: true
+        // Port 80 matches both the placeholder image and the real image (which sets
+        // ASPNETCORE_HTTP_PORTS=80), so the first revision is healthy on initial provision.
+        targetPort: 80
+        transport: 'auto'
+      }
+      registries: [
+        {
+          server: acr.properties.loginServer
+          // 'system' tells Container Apps to authenticate ACR pulls with the
+          // system-assigned identity (see the AcrPull assignment below).
+          identity: 'system'
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'web'
+          image: webImageResolved
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+          env: [
+            // Limes.Web runs the deterministic pipeline in-process — no Foundry/Blob needed.
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+          ]
+        }
+      ]
+      // Keep one warm replica for snappy demos; scale out to 3 under HTTP load.
+      scale: {
+        minReplicas: 1
+        maxReplicas: 3
+        rules: [
+          {
+            name: 'http-concurrency'
+            http: {
+              metadata: {
+                concurrentRequests: '50'
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+// The web app's system-assigned identity needs AcrPull to fetch its image from the private
+// registry. The first-provision placeholder is a public MCR image (no ACR auth), so this can
+// be assigned after the app exists without a chicken-and-egg on initial provision.
+resource webAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(acr.id, webApp.id, acrPullRoleId)
+  scope: acr
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+    principalId: webApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // --- Role assignments: managed identity (job) ---
 
 resource jobOpenAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -274,3 +361,4 @@ output chatDeploymentName string = chat.name
 output intakeContainerUrl string = '${storage.properties.primaryEndpoints.blob}intake'
 output reportsContainerUrl string = '${storage.properties.primaryEndpoints.blob}reports'
 output jobName string = job.name
+output webUrl string = 'https://${webApp.properties.configuration.ingress.fqdn}'
