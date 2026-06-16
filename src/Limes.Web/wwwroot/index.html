@@ -115,13 +115,6 @@
   .answered-tally { font-size: 12.5px; color: var(--muted); }
   .review-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px 18px; font-size: 13px; margin: 6px 0 4px; }
   .review-grid .rp { color: var(--muted); }
-  .mode-opts { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
-  .mode-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line);
-    border-radius: 8px; cursor: pointer; }
-  .mode-opt.sel { border-color: var(--accent); background: var(--accent-soft); }
-  .mode-opt input { margin-top: 3px; }
-  .mode-opt .mt { font-weight: 600; font-size: 13px; }
-  .mode-opt .md { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -231,7 +224,7 @@
   let Q = null;                                  // questionnaire from /api/questionnaire
   const answers = {};                            // questionId -> { score:int|null, na:bool, evidence, prompt }
   const partner = { name: "", industry: "", region: "" };
-  let selectedMode = "deterministic";
+  const selectedMode = "agents";                 // web app always runs the Foundry-backed agent pipeline
   let step = 0;                                  // 0 = profile; 1..N = pillars; N+1 = review
   let totalSteps = 2;
 
@@ -368,23 +361,15 @@
       const ans = p.questions.filter((q) => answers[q.id].score != null).length;
       return `<div>${esc(p.displayName)}</div><div class="rp">${ans}/${tot} answered</div>`;
     }).join("");
-    const opt = (val, title, desc) =>
-      `<label class="mode-opt ${selectedMode === val ? "sel" : ""}">
-        <input type="radio" name="mode" value="${val}" ${selectedMode === val ? "checked" : ""}>
-        <span><span class="mt">${title}</span><span class="md">${desc}</span></span></label>`;
     $("stepBody").innerHTML = `
       <p class="muted">${answeredCount()} of ${questionTotal()} questions answered. Unanswered items are treated as N/A.</p>
       <div class="review-grid">
         <div><strong>Partner</strong></div><div class="rp">${esc(partner.name || "—")}${partner.industry ? " · " + esc(partner.industry) : ""}${partner.region ? " · " + esc(partner.region) : ""}</div>
         ${rows}
       </div>
-      <h3>Assessment mode</h3>
-      <div class="mode-opts" id="modeOpts">
-        ${opt("deterministic", "Deterministic — $0 model cost", "Pure rules engine. Instant, no Azure calls. Recommended for demos &amp; CI.")}
-        ${opt("agents", "Agents — Foundry narrative", "Adds AI-written narrative grounded in the Minerva corpus. Costs a few cents and requires Foundry configured on the server.")}
-      </div>
+      <h3>Assessment</h3>
+      <p class="muted">Runs the AI agent pipeline — a Foundry-backed narrative grounded in the Minerva corpus.</p>
       <span id="runStatus" class="muted" role="status" aria-live="polite"></span>`;
-    $("modeOpts").addEventListener("change", (e) => { selectedMode = e.target.value; renderReview(); });
   }
 
   function buildIntake() {
